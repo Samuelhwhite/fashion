@@ -15,3 +15,4 @@ etc/
 lib/
 share/
 pyvenv.cfg
+notebooks/.ipynb_checkpoints/
