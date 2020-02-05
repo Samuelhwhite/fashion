@@ -1,0 +1,17 @@
+*.csv
+*.txt
+*.README.html
+*.VERSION.txt
+*.cpg
+*.dbf
+*.prj
+*.shp
+*.shx
+*.zip
+*.pptx
+bin/
+data/
+etc/
+lib/
+share/
+pyvenv.cfg
