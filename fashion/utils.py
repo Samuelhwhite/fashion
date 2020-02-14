@@ -23,27 +23,6 @@ def get_api_key():
     return api_key
 
 
-def load_shops(path):
-    
-    # load
-    df = pd.read_csv(path)
-    
-    # translate the columns
-    new_columns = ['Store_Key', 'Franchise', 'Store_Type', 'Outlet', 'Zip_Code', 'City']
-    df.rename(inplace=True, columns=dict(zip(df.columns, new_columns)))
-
-    # filter outlets
-    df = df[df.Outlet != 'H']
-    df.drop(['Outlet'], axis=1, inplace=True)
-    
-    # filter warehouses
-    df = df[df['Store_Type'] != 'P']
-    df = df[df['Store_Type'] != 'S']
-    df.drop(['Store_Type'], axis=1, inplace=True)
-    
-    return df
-
-
 def get_italian_geometry():
     precision = 10 # or 50 or 110
     fname = 'ne_{}m_admin_0_countries'.format(precision)

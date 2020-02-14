@@ -9,6 +9,7 @@
 *.shx
 *.zip
 *.pptx
+*.pyc
 bin/
 data/
 etc/
