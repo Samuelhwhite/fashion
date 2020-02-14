@@ -92,7 +92,7 @@ def main():
     @timeit
     def save(df, outfile):
         print('Saving')
-        df.to_csv(outfile)
+        df.to_csv(outfile, index=False)
     save(df, outfile)
 
 
