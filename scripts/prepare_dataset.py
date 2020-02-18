@@ -13,7 +13,7 @@ def timeit(f):
     def decorated(*args, **kwargs):
         t0 = time.time()
         r = f(*args, **kwargs)
-        print(' --> took {:2.2f}s'.format(time.time() - t0))
+        print(' --> {} took {:2.2f}s'.format(f.__name__, time.time() - t0))
         return r
     return decorated
 
@@ -52,7 +52,11 @@ def main():
     # merge the shops and product information
     @timeit
     def merge(sales, df, on, gb, features):
-        keeps = list(set(features).union(set([on, gb]))) # avoid duplicates
+        if isinstance(on, str):
+            on = [on]
+        if isinstance(gb, str):
+            gb = [gb]
+        keeps = list(set(features).union(set(on + gb))) # avoid duplicates
         return sales.merge(df[keeps], how='left', on=on)
 
     print('Merging shop information')
@@ -64,7 +68,7 @@ def main():
     print('Merging product information')
     prod_features = ['Gender', 'Season', 'OriginalListedPrice']
     prod_merge_on = 'EAN' # exact identifier of the item, including colour and size
-    prod_group_by = 'ProductID' # aggregate over colour and size
+    prod_group_by = ['ProductID', 'ColorDescription'] # aggregate over colour and size
     sales = merge(sales, prods, prod_merge_on, prod_group_by, prod_features)
 
     # compute the week of the year
@@ -79,8 +83,8 @@ def main():
     @timeit
     def aggregate(sales):
         print('Grouping and aggregating')
-        targets = ['Volume', 'NetIncome']
-        features = ['Week', shop_group_by, prod_group_by] + shop_features + prod_features
+        targets = ['Volume']
+        features = ['Week', shop_group_by] + prod_group_by + shop_features + prod_features
 
         df = sales.groupby(features)[targets].sum()
         df.reset_index(level=df.index.names, inplace=True)
