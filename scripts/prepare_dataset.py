@@ -92,6 +92,11 @@ def main():
         return df
     df = aggregate(sales)
 
+    # hack, sorry
+    # (AI season is not represented in 2018 sales data, does not create a column for categorical variables)
+    if args.year == '18':
+        df.loc[0, 'Season'] = 'AI'
+
     # save the resulting dataset
     @timeit
     def save(df, outfile):

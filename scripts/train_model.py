@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
+import xgboost
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.metrics import mean_absolute_error
 import pandas as pd
 import numpy as np
 import sys
@@ -19,77 +21,84 @@ def prepare_X(X):
             X[feature] = X[feature].astype(int)
 
     # preprocess each feature separately
-    print(X.head())
     features = list(X.columns)
     for f in features:
 
-        print(f)
-        
         dt = X.dtypes[f]
 
         # let numericals pass
         if dt in [np.float64, np.int64]:
-            print('{} is a float, leave alone'.format(f))
+            continue
 
         # and encode categoricals
         else:
-            print('hello')
             # depending on the number of unique elements
             n_unique = len(X[f].unique())
+
             # splurge with memory
             if n_unique < 10:
                 new = pd.get_dummies(X[f], prefix=f)
                 X = pd.concat([X, new], axis=1)
                 X.drop(f, axis=1, inplace=True)
+
             # or be stingy
             else:
                 X[f] = pd.Categorical(X[f]).codes
-
-    # and one-hot encode categorical variables
-    print(X.head())
-    #X = pd.get_dummies(X)
-    #print(X)
 
     return X
 
 
 def main():
 
-    print('Hello world')
-
     # load the dataset
-    df = pd.read_csv(utils.loc / 'data' / 'basic_2017.csv', nrows=10000)
+    df17 = pd.read_csv(utils.loc / 'data' / 'basic_2017.csv', nrows=10000000)
+    df18 = pd.read_csv(utils.loc / 'data' / 'basic_2018.csv', nrows=10000000)
 
     # define the features and the target
     features = ['Week', 'Franchise', 'Gender', 'Season', 'OriginalListedPrice', 'ColorDescription']
     target = 'Volume'
-    X = df[features]
-    Y = df[target]
 
-    # prepare the dataset
-    X = prepare_X(X)
+    # prepare the train and test parts
+    X_train = prepare_X(df17[features])
+    Y_train = df17[target]
+    m_train = xgboost.DMatrix(X_train, label=Y_train)
 
-    # split the data
-    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, train_size=0.75)
+    X_valid = prepare_X(df18[features])
+    Y_valid = df18[target]
+    m_valid = xgboost.DMatrix(X_valid, label=Y_valid)
 
     # prepare the model
-    n_estimators = 100
-    model = GradientBoostingRegressor(n_estimators=n_estimators,
-                                      verbose=1)
-    model.fit(X_train, Y_train)
+    num_round = 1000
+    params = {'max_depth': 10,
+              'eta': 0.1,
+              'objective':'reg:squarederror',
+              'eval_metric':'mae', 
+              }
 
-    # plot the training
-    stages = range(n_estimators)
+    model = xgboost.train(params,
+                          m_train,
+                          num_round,
+                          evals=[(m_valid, 'valid')],
+                          early_stopping_rounds=5,
+                          #verbose_eval=100)
+                          )
+
+    # compute the losses throughout the training 
+    num_trees = len(model.get_dump())
     val_loss = []
     train_loss = []
-    for y_pred in model.staged_predict(X_test):
-        val_loss.append(model.loss_(Y_test, y_pred))
-    for y_pred in model.staged_predict(X_train):
-        train_loss.append(model.loss_(Y_train, y_pred))
-    
+    for t in range(num_trees):
+        # validation
+        y_pred = model.predict(m_valid, ntree_limit=t)
+        val_loss.append(mean_absolute_error(Y_valid, y_pred))
+        # training
+        y_pred = model.predict(m_train, ntree_limit=t)
+        train_loss.append(mean_absolute_error(Y_train, y_pred))
+
+    # create the training plot
     fig, ax = plt.subplots()
-    ax.plot(stages, val_loss, label='validation loss')
-    ax.plot(stages, train_loss, label='train loss')
+    ax.plot(range(num_trees), val_loss, label='validation loss')
+    ax.plot(range(num_trees), train_loss, label='train loss')
     ax.legend()
     ax.set_xlabel('Training stage')
     ax.set_ylabel('Loss')
