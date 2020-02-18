@@ -18,3 +18,5 @@ lib/
 share/
 pyvenv.cfg
 notebooks/.ipynb_checkpoints/
+presentations/
+.DS_Store

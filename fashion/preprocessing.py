@@ -66,13 +66,24 @@ def load_products(path=utils.loc / 'data' / '20200120_barcode.csv'):
     df.rename(inplace=True, columns=dict(zip(df.columns, new_columns)))
 
     # remove duplicate values (or unnecessary ones)
-    cols_rm=['ColorID']#, 'SizeID']
+    cols_rm=['ColorID']
     df.drop(cols_rm, axis=1, inplace=True)
+
+    # reduce the duplicates in colours
+    def colour_transform(s):
+        for c in ['-', '/', '.']:
+            s = s.replace(c, ' ')
+        return s.lower().split()[0]
+    cd = 'ColorDescription'
+    df[cd] = df[cd].apply(lambda s: colour_transform(s))
+
+    # and keep them to 50 most popular colours
+    nkeep = 50
+    populars = df[cd].value_counts().index[:nkeep]
+    df[cd] = df[cd].apply(lambda s: s if s in populars else 'other')
 
     return df
     
-
-
 
 
 
