@@ -1,11 +1,13 @@
 import pandas as pd
 import numpy as np
+import pickle
 import sys
+import os
 sys.path.insert(0, '..')
 from fashion import utils
 
 
-def load_shops(path=utils.loc / 'data' / '20200120_filiali.csv'):
+def load_shops(path=utils.loc / 'data' / '20200120_filiali.csv', extra_info=True):
 
     # load
     df = pd.read_csv(path, low_memory=False)
@@ -24,14 +26,49 @@ def load_shops(path=utils.loc / 'data' / '20200120_filiali.csv'):
     # StoreType
     df.StoreType = df.StoreType.map({' ':'Store'})
 
+    # add extra information
+    if extra_info:
+        df['NUniqueProductsSold'] = get_nproducts_in_shop(df)
+
     return df
 
 
-def load_sales(path=utils.loc / 'data' / '20200120_sales17.csv', shops_df=load_shops()):
+def get_nproducts_in_shop(shops):
+
+    # load or compute the number of products sold in each store
+    fpath = utils.loc / 'data' / 'product_counts.pkl'
+    if os.path.exists(fpath):
+        print('Loading product counts in stores')
+        prod_counts = pickle.load(open(fpath, 'rb'))
+
+    else:
+        print('Computing product counts in stores')
+        # load and concatenate sales
+        sales17 = load_sales(utils.loc / 'data' / '20200120_sales17.csv', shops)
+        sales1819 = load_sales(utils.loc / 'data' / '20200120_sales1819.csv', shops)
+        sales = pd.concat([sales17, sales1819], axis=0)
+
+        gb = sales.groupby(by='StoreKey')
+        counts = gb["EAN"].nunique()
+        prod_counts = {sk:counts[sk] for sk in shops.StoreKey if sk in counts}
+        pickle.dump(prod_counts, open(fpath, 'wb'))
+
+    # return an array of counts
+    res = np.zeros(len(shops), dtype=int)
+    for i, sk in enumerate(shops.StoreKey):
+        nprod = prod_counts[sk] if sk in prod_counts else 0
+        res[i] = nprod
+
+    return res
+
+
+def load_sales(path=utils.loc / 'data' / '20200120_sales17.csv', shops_df=load_shops(extra_info=False), nrows=None):
 
     # load
-    #df = pd.read_csv(path, nrows=100000)
-    df = pd.read_csv(path)
+    if nrows:
+        df = pd.read_csv(path, nrows=nrows)
+    else:
+        df = pd.read_csv(path)
 
     # translate the columns
     new_columns = ['StoreKey', 'ReceiptKey', 'Date', 'Hour', 'EAN', 'Volume', 'NetIncome']
@@ -85,7 +122,43 @@ def load_products(path=utils.loc / 'data' / '20200120_barcode.csv'):
     return df
     
 
+def get_stores_in_sales_data():
+
+    fname = utils.loc / 'data' / 'sales_stores.csv'
+    if os.path.exists(fname):
+        print('loading')
+        sales_stores = pickle.load(open(fname, 'rb'))
+
+    else:
+        print('computing')
+        sales17 = load_sales(utils.loc / 'data' / '20200120_sales17.csv')
+        stores17 = sales17.StoreKey.unique()
+        sales1819 = load_sales(utils.loc / 'data' / '20200120_sales1819.csv')
+        stores1819 = sales1819.StoreKey.unique()
+
+        sales_stores = set(stores17).union(set(stores1819))
+        pickle.dump(sales_stores, open(fname, 'wb'))
+
+    return sales_stores
+
+
+    
+
+def main():
+
+    shops = load_shops()
+
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots()
+    ax.hist(shops.NUniqueProductsSold, bins=100)
+    ax.set_xlabel('N unique products sold')
+    ax.set_ylabel('Number of stores')
+    plt.savefig('test.pdf')
 
 
 
 
+
+
+if __name__ == '__main__':
+    main()
