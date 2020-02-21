@@ -59,7 +59,7 @@ def main():
     target = 'Volume'
 
     # and add the features that were computed rather than directly available
-    features += ['NUniqueProductsSold']
+    features += ['NUniqueProductsSold', 'NTotalProductsSold']
 
     # prepare the train and test parts
     X_train = prepare_X(df17[features])
@@ -108,7 +108,7 @@ def main():
     ax.plot(trees, train_loss, label='train loss')
     ax.legend()
     ax.set_xlabel('Training stage')
-    ax.set_ylabel('Loss')
+    ax.set_ylabel('Mean absolute error')
     plt.savefig(utils.loc / 'figures' / 'training' / 'BaselineTraining.pdf')
 
 

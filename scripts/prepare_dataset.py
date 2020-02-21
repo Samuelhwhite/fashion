@@ -60,7 +60,7 @@ def main():
         return sales.merge(df[keeps], how='left', on=on)
 
     print('Merging shop information')
-    shop_features = ['Franchise', 'NUniqueProductsSold']
+    shop_features = ['Franchise', 'NUniqueProductsSold', 'NTotalProductsSold']
     shop_merge_on = 'StoreKey'
     shop_group_by = ['StoreKey']
     sales = merge(sales, shops, shop_merge_on, shop_group_by, shop_features)
