@@ -28,21 +28,49 @@ def load_shops(path=utils.loc / 'data' / '20200120_filiali.csv', extra_info=True
 
     # add extra information
     if extra_info:
-        df['NUniqueProductsSold'] = get_nproducts_in_shop(df)
+        df['NUniqueProductsSold'] = get_nunique_products_in_shop(df)
+        df['NTotalProductsSold'] = get_ntotal_products_in_shop(df)
 
     return df
 
 
-def get_nproducts_in_shop(shops):
+def get_ntotal_products_in_shop(shops):
 
     # load or compute the number of products sold in each store
-    fpath = utils.loc / 'data' / 'product_counts.pkl'
+    fpath = utils.loc / 'data' / 'total_product_counts.pkl'
     if os.path.exists(fpath):
-        print('Loading product counts in stores')
+        print('Loading total product counts in stores')
         prod_counts = pickle.load(open(fpath, 'rb'))
 
     else:
-        print('Computing product counts in stores')
+        print('Computing total product counts in stores')
+        # load only 2017 data
+        sales = load_sales(utils.loc / 'data' / '20200120_sales17.csv', shops)
+
+        gb = sales.groupby(by='StoreKey')
+        counts = gb.sum()["Volume"]
+        prod_counts = {sk:counts[sk] for sk in shops.StoreKey if sk in counts}
+        pickle.dump(prod_counts, open(fpath, 'wb'))
+
+    # return an array of counts
+    res = np.zeros(len(shops), dtype=int)
+    for i, sk in enumerate(shops.StoreKey):
+        nprod = prod_counts[sk] if sk in prod_counts else 0
+        res[i] = nprod
+
+    return res
+
+
+def get_nunique_products_in_shop(shops):
+
+    # load or compute the number of products sold in each store
+    fpath = utils.loc / 'data' / 'unique_product_counts.pkl'
+    if os.path.exists(fpath):
+        print('Loading unique product counts in stores')
+        prod_counts = pickle.load(open(fpath, 'rb'))
+
+    else:
+        print('Computing unique product counts in stores')
         # load and concatenate sales
         sales17 = load_sales(utils.loc / 'data' / '20200120_sales17.csv', shops)
         sales1819 = load_sales(utils.loc / 'data' / '20200120_sales1819.csv', shops)
@@ -142,18 +170,17 @@ def get_stores_in_sales_data():
     return sales_stores
 
 
-    
-
 def main():
 
     shops = load_shops()
 
     import matplotlib.pyplot as plt
-    fig, ax = plt.subplots()
-    ax.hist(shops.NUniqueProductsSold, bins=100)
-    ax.set_xlabel('N unique products sold')
-    ax.set_ylabel('Number of stores')
-    #plt.savefig('test.pdf')
+    for var in ['NTotalProductsSold', 'NUniqueProductsSold']:
+        fig, ax = plt.subplots()
+        ax.hist(shops[var], bins=100)
+        ax.set_xlabel(var)
+        ax.set_ylabel('Number of stores')
+        plt.savefig(utils.loc / 'figures' / '{}.pdf'.format(var))
 
 
 
