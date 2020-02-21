@@ -62,13 +62,13 @@ def main():
     print('Merging shop information')
     shop_features = ['Franchise']
     shop_merge_on = 'StoreKey'
-    shop_group_by = 'StoreKey'
+    shop_group_by = ['StoreKey']
     sales = merge(sales, shops, shop_merge_on, shop_group_by, shop_features)
 
     print('Merging product information')
     prod_features = ['Gender', 'Season', 'OriginalListedPrice']
     prod_merge_on = 'EAN' # exact identifier of the item, including colour and size
-    prod_group_by = ['ProductID', 'ColorDescription'] # aggregate over colour and size
+    prod_group_by = ['ProductID'] # aggregate over colour and size
     sales = merge(sales, prods, prod_merge_on, prod_group_by, prod_features)
 
     # compute the week of the year
@@ -84,7 +84,7 @@ def main():
     def aggregate(sales):
         print('Grouping and aggregating')
         targets = ['Volume']
-        features = ['Week', shop_group_by] + prod_group_by + shop_features + prod_features
+        features = ['Week'] + shop_group_by + prod_group_by + shop_features + prod_features
 
         df = sales.groupby(features)[targets].sum()
         df.reset_index(level=df.index.names, inplace=True)
@@ -103,6 +103,7 @@ def main():
         print('Saving')
         df.to_csv(outfile, index=False)
     save(df, outfile)
+    print(df.head())
 
 
 if __name__ == '__main__':

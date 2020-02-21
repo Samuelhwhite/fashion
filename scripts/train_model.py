@@ -51,11 +51,11 @@ def prepare_X(X):
 def main():
 
     # load the dataset
-    df17 = pd.read_csv(utils.loc / 'data' / 'basic_2017.csv', nrows=10000000)
-    df18 = pd.read_csv(utils.loc / 'data' / 'basic_2018.csv', nrows=10000000)
+    df17 = pd.read_csv(utils.loc / 'data' / 'basic_2017.csv')
+    df18 = pd.read_csv(utils.loc / 'data' / 'basic_2018.csv')
 
     # define the features and the target
-    features = ['Week', 'Franchise', 'Gender', 'Season', 'OriginalListedPrice', 'ColorDescription']
+    features = ['Week', 'Franchise', 'Gender', 'Season', 'OriginalListedPrice']
     target = 'Volume'
 
     # prepare the train and test parts
@@ -69,10 +69,12 @@ def main():
 
     # prepare the model
     num_round = 1000
-    params = {'max_depth': 10,
+    params = {'max_depth': 4,
               'eta': 0.1,
               'objective':'reg:squarederror',
               'eval_metric':'mae', 
+              'colsample_bytree':0.05,
+              'tree_method':'hist'
               }
 
     model = xgboost.train(params,
@@ -82,12 +84,14 @@ def main():
                           early_stopping_rounds=5,
                           #verbose_eval=100)
                           )
+    print(model.attributes())
 
     # compute the losses throughout the training 
     num_trees = len(model.get_dump())
     val_loss = []
     train_loss = []
-    for t in range(num_trees):
+    trees = range(1, num_trees)
+    for t in trees:
         # validation
         y_pred = model.predict(m_valid, ntree_limit=t)
         val_loss.append(mean_absolute_error(Y_valid, y_pred))
@@ -97,8 +101,8 @@ def main():
 
     # create the training plot
     fig, ax = plt.subplots()
-    ax.plot(range(num_trees), val_loss, label='validation loss')
-    ax.plot(range(num_trees), train_loss, label='train loss')
+    ax.plot(trees, val_loss, label='validation loss')
+    ax.plot(trees, train_loss, label='train loss')
     ax.legend()
     ax.set_xlabel('Training stage')
     ax.set_ylabel('Loss')
