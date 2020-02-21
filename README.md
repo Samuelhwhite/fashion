@@ -50,5 +50,15 @@ python prepare_dataset.py --year 18
 python prepare_dataset.py --year 19
 ```
 
+### 2.2 Train an xgboost model
+
+Train a benchmark model on the dataset.
+
+```
+cd scripts/
+python train_model.py
+```
+
+
 
 

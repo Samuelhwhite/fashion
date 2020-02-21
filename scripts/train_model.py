@@ -58,6 +58,9 @@ def main():
     features = ['Week', 'Franchise', 'Gender', 'Season', 'OriginalListedPrice']
     target = 'Volume'
 
+    # and add the features that were computed rather than directly available
+    features += ['NUniqueProductsSold']
+
     # prepare the train and test parts
     X_train = prepare_X(df17[features])
     Y_train = df17[target]

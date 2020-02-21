@@ -153,7 +153,7 @@ def main():
     ax.hist(shops.NUniqueProductsSold, bins=100)
     ax.set_xlabel('N unique products sold')
     ax.set_ylabel('Number of stores')
-    plt.savefig('test.pdf')
+    #plt.savefig('test.pdf')
 
 
 
