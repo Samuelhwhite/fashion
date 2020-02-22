@@ -9,6 +9,8 @@
 *.shx
 *.zip
 *.pptx
+*.pyc
+*.pdf
 bin/
 data/
 etc/
@@ -16,3 +18,5 @@ lib/
 share/
 pyvenv.cfg
 notebooks/.ipynb_checkpoints/
+presentations/
+.DS_Store
