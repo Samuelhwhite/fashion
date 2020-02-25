@@ -14,7 +14,7 @@ if os.getenv('USER') == 'zgubic':
 elif os.getenv('USER') == 'yourusername':
     loc = Path('')
 elif os.getenv('username') == 'odhra':
-    loc = Path('')
+    loc = Path('/Users/odhra/Documents/GitHub/OSG/fashion')
     state = 'windows'
 else:
     print('"loc" variable not defined.\nEdit the first few lines of fashion/utils.py '+
