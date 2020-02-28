@@ -50,29 +50,29 @@ def load_shops(path):
     return df
 
 
-def load_sales(path):
-    # load
-    df = pd.read_csv(path)
-
-    # translate the columns
-    new_columns = ['Store_Key', 'Recipt_Key', 'Date', 'Hour', 'Barcode', 'No_sold', 'Net_Income']
-    df.rename(inplace=True, columns=dict(zip(df.columns, new_columns)))
-
-    return df
-
-
-def load_Product(path):
-    # load
-    df = pd.read_csv(path)
-
-    # translate the columns
-    new_columns = ['Barcode', 'Product_identifier', 'Color_code', 'Color_description', 'Size_code', 'Gender', 'Item',
-                   'Item_description', 'Product_category_code', 'season_code', 'year', 'colour_ID', 'size_ID',
-                   'Original_list_price', 'COG', 'Recieved_items', 'Introduction_period', 'rotation', 'price_range',
-                   'fashion_content', 'seasonality', 'innovation_content']
-    df.rename(inplace=True, columns=dict(zip(df.columns, new_columns)))
-
-    return df
+# def load_sales(path):
+#     # load
+#     df = pd.read_csv(path)
+#
+#     # translate the columns
+#     new_columns = ['Store_Key', 'Recipt_Key', 'Date', 'Hour', 'Barcode', 'No_sold', 'Net_Income']
+#     df.rename(inplace=True, columns=dict(zip(df.columns, new_columns)))
+#
+#     return df
+#
+#
+# def load_Product(path):
+#     # load
+#     df = pd.read_csv(path)
+#
+#     # translate the columns
+#     new_columns = ['Barcode', 'Product_identifier', 'Color_code', 'Color_description', 'Size_code', 'Gender', 'Item',
+#                    'Item_description', 'Product_category_code', 'season_code', 'year', 'colour_ID', 'size_ID',
+#                    'Original_list_price', 'COG', 'Recieved_items', 'Introduction_period', 'rotation', 'price_range',
+#                    'fashion_content', 'seasonality', 'innovation_content']
+#     df.rename(inplace=True, columns=dict(zip(df.columns, new_columns)))
+#
+#     return df
 
 
 if state == 'mac':
