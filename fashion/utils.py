@@ -4,14 +4,17 @@ import requests
 import json
 import numpy as np
 import pandas as pd
-import geopandas as gpd
 import os
 from pathlib import Path
 
 if os.getenv('USER') == 'zgubic':
     loc = Path('/Users/zgubic/Projects/fashion/')
+    state = 'mac'
 elif os.getenv('USER') == 'yourusername':
     loc = Path('')
+elif os.getenv('username') == 'odhra':
+    loc = Path('/Users/odhra/Documents/GitHub/OSG/fashion')
+    state = 'windows'
 else:
     print('"loc" variable not defined.\nEdit the first few lines of fashion/utils.py '+
     'with your username.\nYour username can be found by typing "echo $USER" in your terminal.')
@@ -22,24 +25,25 @@ def get_api_key():
         api_key = f.read()
     return api_key
 
+if state == 'mac':
+    import geopandas as gpd
+    def get_italian_geometry():
+        precision = 10 # or 50 or 110
+        fname = 'ne_{}m_admin_0_countries'.format(precision)
+        fpath = loc / 'data' / '{}.shp'.format(fname)
 
-def get_italian_geometry():
-    precision = 10 # or 50 or 110
-    fname = 'ne_{}m_admin_0_countries'.format(precision)
-    fpath = loc / 'data' / '{}.shp'.format(fname)
-    
-    # download the data if not present locally
-    if not os.path.exists(fpath):
-        print('Data not found, downloading.')
-        url = 'https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/cultural/{}.zip'.format(fname)
-        os.system('wget {} -P {}'.format(url, loc / 'data'))
-        os.system('unzip {d}/{n} -d {d}'.format(d=loc / 'data', n='{}.zip'.format(fname)))
-    
-    gdf = gpd.read_file(fpath)[['ADMIN', 'ADM0_A3', 'geometry']]
-    gdf.columns = ['country', 'country_code', 'geometry']
-    italy = gdf[gdf.country == 'Italy']['geometry'].iloc[0]
-    
-    return italy
+        # download the data if not present locally
+        if not os.path.exists(fpath):
+            print('Data not found, downloading.')
+            url = 'https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/cultural/{}.zip'.format(fname)
+            os.system('wget {} -P {}'.format(url, loc / 'data'))
+            os.system('unzip {d}/{n} -d {d}'.format(d=loc / 'data', n='{}.zip'.format(fname)))
+
+        gdf = gpd.read_file(fpath)[['ADMIN', 'ADM0_A3', 'geometry']]
+        gdf.columns = ['country', 'country_code', 'geometry']
+        italy = gdf[gdf.country == 'Italy']['geometry'].iloc[0]
+
+        return italy
 
 
 def draw_italy(italy, ax):
