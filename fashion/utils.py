@@ -4,17 +4,23 @@ import requests
 import json
 import numpy as np
 import pandas as pd
-import geopandas as gpd
+
 import os
 from pathlib import Path
 
 if os.getenv('USER') == 'zgubic':
     loc = Path('/Users/zgubic/Projects/fashion/')
+    state = 'mac'
 elif os.getenv('USER') == 'yourusername':
     loc = Path('')
+elif os.getenv('username') == 'odhra':
+    loc = Path('/Users/odhra/Documents/GitHub/OSG/fashion')
+    state = 'windows'
 else:
     print('"loc" variable not defined.\nEdit the first few lines of fashion/utils.py '+
     'with your username.\nYour username can be found by typing "echo $USER" in your terminal.')
+
+
 
 
 def get_api_key():
@@ -23,23 +29,73 @@ def get_api_key():
     return api_key
 
 
-def get_italian_geometry():
-    precision = 10 # or 50 or 110
-    fname = 'ne_{}m_admin_0_countries'.format(precision)
-    fpath = loc / 'data' / '{}.shp'.format(fname)
+def load_shops(path):
     
-    # download the data if not present locally
-    if not os.path.exists(fpath):
-        print('Data not found, downloading.')
-        url = 'https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/cultural/{}.zip'.format(fname)
-        os.system('wget {} -P {}'.format(url, loc / 'data'))
-        os.system('unzip {d}/{n} -d {d}'.format(d=loc / 'data', n='{}.zip'.format(fname)))
+    # load
+    df = pd.read_csv(path)
     
-    gdf = gpd.read_file(fpath)[['ADMIN', 'ADM0_A3', 'geometry']]
-    gdf.columns = ['country', 'country_code', 'geometry']
-    italy = gdf[gdf.country == 'Italy']['geometry'].iloc[0]
+    # translate the columns
+    new_columns = ['Store_Key', 'Franchise', 'Store_Type', 'Outlet', 'Zip_Code', 'City']
+    df.rename(inplace=True, columns=dict(zip(df.columns, new_columns)))
+
+    # filter outlets
+    df = df[df.Outlet != 'H']
+    df.drop(['Outlet'], axis=1, inplace=True)
     
-    return italy
+    # filter warehouses
+    df = df[df['Store_Type'] != 'P']
+    df = df[df['Store_Type'] != 'S']
+    df.drop(['Store_Type'], axis=1, inplace=True)
+    
+    return df
+
+
+def load_sales(path):
+    # load
+    df = pd.read_csv(path)
+
+    # translate the columns
+    new_columns = ['Store_Key', 'Recipt_Key', 'Date', 'Hour', 'Barcode', 'No_sold', 'Net_Income']
+    df.rename(inplace=True, columns=dict(zip(df.columns, new_columns)))
+
+    return df
+
+
+def load_Product(path):
+    # load
+    df = pd.read_csv(path)
+
+    # translate the columns
+    new_columns = ['Barcode', 'Product_identifier', 'Color_code', 'Color_description', 'Size_code', 'Gender', 'Item',
+                   'Item_description', 'Product_category_code', 'season_code', 'year', 'colour_ID', 'size_ID',
+                   'Original_list_price', 'COG', 'Recieved_items', 'Introduction_period', 'rotation', 'price_range',
+                   'fashion_content', 'seasonality', 'innovation_content']
+    df.rename(inplace=True, columns=dict(zip(df.columns, new_columns)))
+
+    return df
+
+
+if state == 'mac':
+    import geopandas as gpd
+
+    def get_italian_geometry():
+        precision = 10 # or 50 or 110
+        fname = 'ne_{}m_admin_0_countries'.format(precision)
+        fpath = loc / 'data' / '{}.shp'.format(fname)
+
+        # download the data if not present locally
+        if not os.path.exists(fpath):
+            print('Data not found, downloading.')
+            url = 'https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/cultural/{}.zip'.format(fname)
+            os.system('wget {} -P {}'.format(url, loc / 'data'))
+            os.system('unzip {d}/{n} -d {d}'.format(d=loc / 'data', n='{}.zip'.format(fname)))
+
+        gdf = gpd.read_file(fpath)[['ADMIN', 'ADM0_A3', 'geometry']]
+        gdf.columns = ['country', 'country_code', 'geometry']
+        italy = gdf[gdf.country == 'Italy']['geometry'].iloc[0]
+
+        return italy
+
 
 
 def draw_italy(italy, ax):
