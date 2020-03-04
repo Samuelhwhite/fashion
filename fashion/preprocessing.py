@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import pickle
+import time
 import sys
 import os
 sys.path.insert(0, '..')
@@ -56,7 +57,7 @@ def get_nproducts_in_shop(shops, kind):
             counts = gb["EAN"].nunique()
         elif kind == 'Total':
             counts = gb["Volume"].sum()
-            
+
         prod_counts = {sk:counts[sk] for sk in shops.StoreKey if sk in counts}
         pickle.dump(prod_counts, open(fpath, 'wb'))
 
@@ -97,7 +98,7 @@ def load_sales(path=utils.loc / 'data' / '20200120_sales17.csv', shops_df=load_s
 
 def load_products(path=utils.loc / 'data' / '20200120_barcode.csv'):
 
-    # load the 
+    # load the
     df = pd.read_csv(path, low_memory=False)
 
     # translate the columns
@@ -134,38 +135,142 @@ def load_products(path=utils.loc / 'data' / '20200120_barcode.csv'):
     df[size] = df[size].apply(lambda s: s if s in populars else 'other')
 
     return df
-    
+
 
 def get_stores_in_sales_data():
 
-    fname = utils.loc / 'data' / 'sales_stores.csv'
-    if os.path.exists(fname):
-        print('loading')
-        sales_stores = pickle.load(open(fname, 'rb'))
+    fpath = utils.loc / 'data' / 'cache_sales_stores.csv'
+    if os.path.exists(fpath):
+        sales_stores = pickle.load(open(fpath, 'rb'))
 
     else:
-        print('computing')
+        print('{} does not exist yet, computing it now.'.format(fpath))
         sales17 = load_sales(utils.loc / 'data' / '20200120_sales17.csv')
         stores17 = sales17.StoreKey.unique()
         sales1819 = load_sales(utils.loc / 'data' / '20200120_sales1819.csv')
         stores1819 = sales1819.StoreKey.unique()
 
         sales_stores = set(stores17).union(set(stores1819))
-        pickle.dump(sales_stores, open(fname, 'wb'))
+        pickle.dump(sales_stores, open(fpath, 'wb'))
 
     return sales_stores
 
 
+def get_size_groups():
+
+    fpath = utils.loc / 'data' / 'cache_size_groups.pkl'
+
+    if os.path.exists(fpath):
+        groups, pid2group = pickle.load(open(fpath, 'rb'))
+
+    else:
+        print('{} does not exist yet, computing it now.'.format(fpath))
+
+        prods = load_products()
+        pids = prods.ProductID.unique()
+        groups = set()
+        pid2group = {}
+        for i, pid in enumerate(pids):
+
+            group = tuple(s for s in prods[prods.ProductID == pid].Size.unique())
+            groups.add(group)
+            pid2group[pid] = group
+
+        both = groups, pid2group
+        pickle.dump(both, open(fpath, 'wb'))
+
+    return groups, pid2group
+
+
+def get_size_corrections():
+
+    fpath = utils.loc / 'data'/ 'cache_size_corrections.pkl'
+
+    # check if results already exist
+    if os.path.exists(fpath):
+        sc = pickle.load(open(fpath, 'rb'))
+
+    else:
+        print('{} does not exist yet, computing it now.'.format(fpath))
+
+        # load sales data (17 only)
+        sales = load_sales()
+
+        # prepare some mappings
+        groups, pid2group = get_size_groups()
+        EAN2pid = get_EAN2pid()
+        EAN2size = get_EAN2size()
+
+        # compute the dict
+        N_total = len(sales)
+        N_test = 10000
+        dist = {pid:{s:0 for s in pid2group[pid]} for pid in pid2group}
+
+        t0 = time.time()
+        for i in range(len(sales)):
+            row = sales.iloc[i]
+            ean = row['EAN']
+            pid = EAN2pid[ean]
+            size = EAN2size[ean]
+            dist[pid][size] += 1
+
+            if i == N_test:
+                minutes_taken = (time.time()-t0) / 60
+                minutes_total = N_total / N_test * minutes_taken
+                print('based on loop of {}, full run will take {:.2f}m'.format(N_test, minutes_total))
+                continue
+
+        # divide by the total for each product
+        sc = {p:{s:0 for s in dist[p]} for p in dist}
+        for p in dist:
+            total = np.sum([c for c in dist[p].values()])
+            if total == 0:
+                print('WARNING: no products found for {}, {}'.format(p, dist[p]))
+                continue
+            corrections = {s:dist[p][s] / total for s in dist[p]}
+            sc[p] = corrections
+
+        # dump the results
+        pickle.dump(sc, open(fpath, 'wb'))
+
+    return sc
+
+def get_EAN2size():
+
+    fpath = utils.loc / 'data'/ 'cache_EAN2size.pkl'
+
+    # check if results already exist
+    if os.path.exists(fpath):
+        EAN2size = pickle.load(open(fpath, 'rb'))
+
+    else:
+        print('{} does not exist yet, computing it now.'.format(fpath))
+
+        # compute the dict
+        prods = load_products()
+
+        EAN2size = {}
+        for i in range(len(prods)):
+            row = prods.iloc[i]
+            EAN2size[row['EAN']] = row['Size']
+
+
+        # dump the results
+        pickle.dump(EAN2size, open(fpath, 'wb'))
+
+    return EAN2size
+
+
 def get_EAN2pid():
 
-    fpath = utils.loc / 'data'/ 'EAN2pid.pkl'
+    fpath = utils.loc / 'data'/ 'cache_EAN2pid.pkl'
 
     # check if results already exist
     if os.path.exists(fpath):
         EAN2pid = pickle.load(open(fpath, 'rb'))
 
     else:
-        print('EAN2pid dict does not exist yet, computing it now.')
+        print('{} does not exist yet, computing it now.'.format(fpath))
 
         # compute the dict
         prods = load_products()
@@ -184,14 +289,14 @@ def get_EAN2pid():
 
 def get_pid2EAN():
 
-    fpath = utils.loc / 'data'/ 'pid2EAN.pkl'
+    fpath = utils.loc / 'data'/ 'cache_pid2EAN.pkl'
 
     # check if results already exist
     if os.path.exists(fpath):
         pid2EAN = pickle.load(open(fpath, 'rb'))
 
     else:
-        print('pid2EAN dict does not exist yet, computing it now.')
+        print('{} does not exist yet, computing it now.'.format(fpath))
 
         # compute the dict
         EAN2pid = get_EAN2pid()
