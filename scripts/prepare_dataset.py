@@ -21,20 +21,22 @@ def timeit(f):
 def main():
     """
     Create a dataset where each line represents cumulative sales of a product
-    (summed over colours and sizes) in a week in a particular store.
+    in a week in a particular store.
     """
 
     # parse the arguments
     parser = argparse.ArgumentParser(description='prepare the dataset')
     parser.add_argument('--year', type=str, default='17',
                         help='which sales year to summarise')
+    parser.add_argument('--EAN', default=False, action='store_true',
+                        help='If True, sort by EAN. If False, sort by ProductID (aggregate over Size and Colour)')
     parser.add_argument('--force', default=False, action='store_true',
                         help='overwrite the output file')
     args = parser.parse_args()
 
     # check re-run is needed
     infile = utils.loc / 'data' / '20200120_sales{}.csv'.format(args.year)
-    outfile = utils.loc / 'data' / 'basic_20{}.csv'.format(args.year)
+    outfile = utils.loc / 'data' / 'basic_{}_20{}.csv'.format('EAN' if args.EAN else 'ProductID', args.year)
     if os.path.exists(outfile) and not args.force:
         print('Output file {} already exists. Use --force option to overwrite.'.format(outfile))
         exit()
@@ -68,7 +70,7 @@ def main():
     print('Merging product information')
     prod_features = ['Gender', 'Season', 'OriginalListedPrice']
     prod_merge_on = 'EAN' # exact identifier of the item, including colour and size
-    prod_group_by = ['ProductID'] # aggregate over colour and size
+    prod_group_by = ['EAN' if args.EAN else 'ProductID'] # aggregate over colour and size
     sales = merge(sales, prods, prod_merge_on, prod_group_by, prod_features)
 
     # compute the week of the year
