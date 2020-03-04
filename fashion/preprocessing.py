@@ -156,6 +156,53 @@ def get_stores_in_sales_data():
     return sales_stores
 
 
+def get_EAN2pid():
+
+    fpath = utils.loc / 'data'/ 'EAN2pid.pkl'
+
+    # check if results already exist
+    if os.path.exists(fpath):
+        EAN2pid = pickle.load(open(fpath, 'rb'))
+
+    else:
+        print('EAN2pid dict does not exist yet, computing it now.')
+
+        # compute the dict
+        prods = load_products()
+
+        EAN2pid = {}
+        for i in range(len(prods)):
+            row = prods.iloc[i]
+            EAN2pid[row['EAN']] = row['ProductID']
+
+
+        # dump the results
+        pickle.dump(EAN2pid, open(fpath, 'wb'))
+
+    return EAN2pid
+
+
+def get_pid2EAN():
+
+    fpath = utils.loc / 'data'/ 'pid2EAN.pkl'
+
+    # check if results already exist
+    if os.path.exists(fpath):
+        pid2EAN = pickle.load(open(fpath, 'rb'))
+
+    else:
+        print('pid2EAN dict does not exist yet, computing it now.')
+
+        # compute the dict
+        EAN2pid = get_EAN2pid()
+        pid2EAN = {EAN2pid[e]:e for e in EAN2pid}
+
+        # dump the results
+        pickle.dump(pid2EAN, open(fpath, 'wb'))
+
+    return pid2EAN
+
+
 def main():
 
     shops = load_shops()
