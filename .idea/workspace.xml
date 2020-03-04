@@ -1,15 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="76f52dbe-70e3-4685-9df3-29120a4c3570" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/fashion.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/libraries/R_User_Library.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/notebooks/Exploration.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/notebooks/Exploration.ipynb" afterDir="false" />
-    </list>
+    <list default="true" id="76f52dbe-70e3-4685-9df3-29120a4c3570" name="Default Changelist" comment="" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -78,10 +70,10 @@
       </list>
     </option>
   </component>
-  <component name="ProjectFrameBounds" extendedState="7">
-    <option name="x" value="1586" />
+  <component name="ProjectFrameBounds" extendedState="6">
+    <option name="x" value="-14" />
     <option name="y" value="-14" />
-    <option name="width" value="1626" />
+    <option name="width" value="3226" />
     <option name="height" value="1826" />
   </component>
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
@@ -90,7 +82,6 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -123,6 +114,7 @@
           <select />
         </subPane>
       </pane>
+      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -254,16 +246,17 @@
       <workItem from="1582904340458" duration="884000" />
       <workItem from="1583147855602" duration="2480000" />
       <workItem from="1583262898323" duration="2280000" />
+      <workItem from="1583311681379" duration="241000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="35069000" />
+    <option name="totallyTimeSpent" value="35310000" />
   </component>
   <component name="ToolWindowManager">
-    <frame x="-7" y="-7" width="1613" height="913" extended-state="7" />
+    <frame x="-7" y="-7" width="1613" height="913" extended-state="6" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.17148362" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.08542068" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
