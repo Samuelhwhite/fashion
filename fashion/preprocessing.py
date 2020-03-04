@@ -287,26 +287,6 @@ def get_EAN2pid():
     return EAN2pid
 
 
-def get_pid2EAN():
-
-    fpath = utils.loc / 'data'/ 'cache_pid2EAN.pkl'
-
-    # check if results already exist
-    if os.path.exists(fpath):
-        pid2EAN = pickle.load(open(fpath, 'rb'))
-
-    else:
-        print('{} does not exist yet, computing it now.'.format(fpath))
-
-        # compute the dict
-        EAN2pid = get_EAN2pid()
-        pid2EAN = {EAN2pid[e]:e for e in EAN2pid}
-
-        # dump the results
-        pickle.dump(pid2EAN, open(fpath, 'wb'))
-
-    return pid2EAN
-
 
 def main():
 
