@@ -126,6 +126,13 @@ def load_products(path=utils.loc / 'data' / '20200120_barcode.csv'):
     populars = df[cd].value_counts().index[:nkeep]
     df[cd] = df[cd].apply(lambda s: s if s in populars else 'other')
 
+    # keep only the most common sizes (such that 95% of items retain their size, other sizes will be marked as 'other')
+    size = 'Size'
+    cs = np.cumsum(df[size].value_counts())
+    nkeep = np.sum(cs < 0.95 * cs.iloc[-1])
+    populars = df[size].value_counts().index[:nkeep]
+    df[size] = df[size].apply(lambda s: s if s in populars else 'other')
+
     return df
     
 
