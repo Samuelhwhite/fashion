@@ -155,6 +155,55 @@ def get_stores_in_sales_data():
 
     return sales_stores
 
+def get_colour_corrections(path=utils.loc / 'data' / '20200120_sales17.csv'):
+
+    fpath = utils.loc / 'data'/ 'cache_colour_corrections.pkl'
+
+    # check if results already exist
+    if os.path.exists(fpath):
+        cc = pickle.load(open(fpath, 'rb'))
+
+    else:
+        print('{} does not exist yet, computing it now.'.format(fpath))
+
+        sales = load_sales(path=path)
+        products = load_products()
+
+        ean_dict = products[['EAN', 'ProductID', 'ColorDescription']].set_index('EAN').to_dict()
+        EAN2_pid = ean_dict['ProductID']
+        EAN2_colour = ean_dict['ColorDescription']
+
+        # Create dict mapping pid -> set of colours for pid
+        pid_colours = products[['ProductID', 'ColorDescription']] \
+            .groupby('ProductID')['ColorDescription'] \
+            .apply(set) \
+            .to_dict()
+
+        # prepare some mappings
+        pids = sales['EAN'].apply(lambda ean: EAN2_pid[ean])
+        colours = sales['EAN'].apply(lambda ean: EAN2_colour[ean])
+
+        # Group by PIDxSize first, then get sizes of each combination,
+        # then group again by PID only and get fractions for each size
+        t0 = time.time()
+        grouped = pd.DataFrame({'PID': pids, 'Colour': colours}) \
+            .groupby(['PID', 'Colour']) \
+            .size() \
+            .groupby(level=0) \
+            .apply(lambda xs: xs / xs.sum())
+        print("Grouping time: {}s".format(time.time() - t0))
+
+        # compute the dict
+        cc = { pid:{ c:0 for c in pid_colours[pid] } for pid in pid_colours}
+        # Here idx=(pid,size) and val is the fraction of sales out
+        # of the total for this pid
+        for idx, val in grouped.iteritems():
+            cc[idx[0]][idx[1]] = val
+
+        # dump the results
+        pickle.dump(cc, open(fpath, 'wb'))
+
+    return cc
 
 def get_size_groups():
 
@@ -200,35 +249,25 @@ def get_size_corrections():
         groups, pid2group = get_size_groups()
         EAN2pid = get_EAN2pid()
         EAN2size = get_EAN2size()
+        pids = sales['EAN'].apply(lambda ean: EAN2pid[ean])
+        sizes = sales['EAN'].apply(lambda ean: EAN2size[ean])
+
+        # Group by PIDxSize first, then get sizes of each combination,
+        # then group again by PID only and get fractions for each size
+        t0 = time.time()
+        grouped = pd.DataFrame({'PID': pids, 'Size': sizes}) \
+            .groupby(['PID', 'Size']) \
+            .size() \
+            .groupby(level=0) \
+            .apply(lambda sizes: sizes / sizes.sum())
+        print("Grouping time: {}s".format(time.time() - t0))
 
         # compute the dict
-        N_total = len(sales)
-        N_test = 10000
-        dist = {pid:{s:0 for s in pid2group[pid]} for pid in pid2group}
-
-        t0 = time.time()
-        for i in range(len(sales)):
-            row = sales.iloc[i]
-            ean = row['EAN']
-            pid = EAN2pid[ean]
-            size = EAN2size[ean]
-            dist[pid][size] += 1
-
-            if i == N_test:
-                minutes_taken = (time.time()-t0) / 60
-                minutes_total = N_total / N_test * minutes_taken
-                print('based on loop of {}, full run will take {:.2f}m'.format(N_test, minutes_total))
-                continue
-
-        # divide by the total for each product
-        sc = {p:{s:0 for s in dist[p]} for p in dist}
-        for p in dist:
-            total = np.sum([c for c in dist[p].values()])
-            if total == 0:
-                print('WARNING: no products found for {}, {}'.format(p, dist[p]))
-                continue
-            corrections = {s:dist[p][s] / total for s in dist[p]}
-            sc[p] = corrections
+        sc = {pid:{s:0 for s in pid2group[pid]} for pid in pid2group}
+        # Here idx=(pid,size) and val is the fraction of sales out
+        # of the total for this pid
+        for idx, val in grouped.iteritems():
+            sc[idx[0]][idx[1]] = val
 
         # dump the results
         pickle.dump(sc, open(fpath, 'wb'))
