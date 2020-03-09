@@ -24,7 +24,9 @@ def cache(compute):
     def wrapper(*args, **kwargs):
 
         # determine the file we are looking for
-        fname = 'cache_' + compute.__name__ + '.pkl'
+        args_str = ''.join(['_'+str(a) for a in args])
+        kwargs_str = ''.join(['_{}{}'.format(k, kwargs[k]) for k in kwargs])
+        fname = 'cache_{}{}{}.pkl'.format(compute.__name__, args_str, kwargs_str)
         fpath = loc / 'data' / fname
 
         # check cache
