@@ -1,3 +1,4 @@
+import itertools
 import pandas as pd
 import numpy as np
 import pickle
@@ -137,23 +138,20 @@ def load_products(path=utils.loc / 'data' / '20200120_barcode.csv'):
     return df
 
 
-def get_stores_in_sales_data():
+@utils.cache
+def unique_in_sales_data(column, year):
+    """
+    Return unique values of column in sales data of year.
 
-    fpath = utils.loc / 'data' / 'cache_sales_stores.csv'
-    if os.path.exists(fpath):
-        sales_stores = pickle.load(open(fpath, 'rb'))
+    Arguments:
+        column (str): 'StoreKey' or 'EAN'
+        year (str): '17', '18', '19'
+    """
 
-    else:
-        print('{} does not exist yet, computing it now.'.format(fpath))
-        sales17 = load_sales(utils.loc / 'data' / '20200120_sales17.csv')
-        stores17 = sales17.StoreKey.unique()
-        sales1819 = load_sales(utils.loc / 'data' / '20200120_sales1819.csv')
-        stores1819 = sales1819.StoreKey.unique()
+    sales = load_sales(utils.loc / 'data' / '20200120_sales{}.csv'.format(year))
+    uniques = sales[column].unique()
 
-        sales_stores = set(stores17).union(set(stores1819))
-        pickle.dump(sales_stores, open(fpath, 'wb'))
-
-    return sales_stores
+    return uniques
 
 
 @utils.cache
@@ -253,7 +251,10 @@ def main():
     o = EAN2pid()
     i = EAN2size()
     s = size_groups()
-    sc = size_corrections()
+    for k, y in itertools.product(['StoreKey', 'EAN'], [17, 18, 19]):
+        print(k, y)
+        s = unique_in_sales_data(k, y)
+    #sc = size_corrections()
 
 
     #import matplotlib.pyplot as plt
