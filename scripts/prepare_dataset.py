@@ -20,22 +20,18 @@ def timeit(f):
     return decorated
 
 
-def aggregate(args):
-
-    # check re-run is needed
-    infile = utils.loc / 'data' / '20200120_sales{}.csv'.format(args.year)
-    outfile = utils.loc / 'data' / 'aggregate_20{}.pkl'.format(args.year)
-    if os.path.exists(outfile) and not args.force:
-        print('Output file {} already exists. Use --force option to overwrite.'.format(outfile))
-        exit()
+@utils.cache
+def aggregate(year):
 
     # load the dataframes
+    infile = utils.loc / 'data' / '20200120_sales{}.csv'.format(year)
+
     @timeit
     def load_df():
         print('Loading dataframes')
         shops = prep.load_shops()
         prods = prep.load_products()
-        sales = prep.load_sales(infile)
+        sales = prep.load_sales(infile, nrows=1000)
         return shops, prods, sales
     shops, prods, sales = load_df()
 
@@ -93,13 +89,7 @@ def aggregate(args):
         return d
     d = create_dict(df.head(1000)) #TODO
 
-    # save the resulting dataset
-    @timeit
-    def save(d, outfile):
-        print('Saving')
-        pickle.dump(d, open(outfile, 'wb'))
-    save(d, outfile)
-    print(df.head())
+    return d
 
 
 @timeit
@@ -183,10 +173,10 @@ def main():
     args = parser.parse_args()
 
     if args.aggregate:
-        aggregate(args)
+        aggregate(year=args.year, force=args.force)
 
     if args.sample:
-        sample(args.year, args.sample)
+        sample(year=args.year, sample=args.sample)
 
 
 if __name__ == '__main__':

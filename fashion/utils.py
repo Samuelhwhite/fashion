@@ -21,13 +21,18 @@ else:
 def cache(compute):
 
     @functools.wraps(compute)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args, force=False, **kwargs):
 
         # determine the file we are looking for
         args_str = ''.join(['_'+str(a) for a in args])
         kwargs_str = ''.join(['_{}{}'.format(k, kwargs[k]) for k in kwargs])
         fname = 'cache_{}{}{}.pkl'.format(compute.__name__, args_str, kwargs_str)
         fpath = loc / 'data' / fname
+
+        # delete if forced to recompute
+        if force and fpath.exists():
+            print('Force-deleting cache {}'.format(fpath))
+            fpath.unlink()
 
         # check cache
         if fpath.exists():
