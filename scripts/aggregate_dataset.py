@@ -28,15 +28,13 @@ def main():
     parser = argparse.ArgumentParser(description='prepare the dataset')
     parser.add_argument('--year', type=str, default='17',
                         help='which sales year to summarise')
-    parser.add_argument('--EAN', default=False, action='store_true',
-                        help='If True, sort by EAN. If False, sort by ProductID (aggregate over Size and Colour)')
     parser.add_argument('--force', default=False, action='store_true',
                         help='overwrite the output file')
     args = parser.parse_args()
 
     # check re-run is needed
     infile = utils.loc / 'data' / '20200120_sales{}.csv'.format(args.year)
-    outfile = utils.loc / 'data' / 'basic_{}_20{}.csv'.format('EAN' if args.EAN else 'ProductID', args.year)
+    outfile = utils.loc / 'data' / 'basic_20{}.csv'.format(args.year)
     if os.path.exists(outfile) and not args.force:
         print('Output file {} already exists. Use --force option to overwrite.'.format(outfile))
         exit()
@@ -51,27 +49,27 @@ def main():
         return shops, prods, sales
     shops, prods, sales = load_df()
 
-    # merge the shops and product information
-    @timeit
-    def merge(sales, df, on, gb, features):
-        if isinstance(on, str):
-            on = [on]
-        if isinstance(gb, str):
-            gb = [gb]
-        keeps = list(set(features).union(set(on + gb))) # avoid duplicates
-        return sales.merge(df[keeps], how='left', on=on)
+    ## merge the shops and product information
+    #@timeit
+    #def merge(sales, df, on, gb, features):
+    #    if isinstance(on, str):
+    #        on = [on]
+    #    if isinstance(gb, str):
+    #        gb = [gb]
+    #    keeps = list(set(features).union(set(on + gb))) # avoid duplicates
+    #    return sales.merge(df[keeps], how='left', on=on)
 
-    print('Merging shop information')
-    shop_features = ['Franchise', 'NUniqueProductsSold', 'NTotalProductsSold']
-    shop_merge_on = 'StoreKey'
-    shop_group_by = ['StoreKey']
-    sales = merge(sales, shops, shop_merge_on, shop_group_by, shop_features)
+    #print('Merging shop information')
+    #shop_features = ['Franchise', 'NUniqueProductsSold', 'NTotalProductsSold']
+    #shop_merge_on = 'StoreKey'
+    #shop_group_by = ['StoreKey']
+    ##sales = merge(sales, shops, shop_merge_on, shop_group_by, shop_features)
 
-    print('Merging product information')
-    prod_features = ['Gender', 'Season', 'OriginalListedPrice']
-    prod_merge_on = 'EAN' # exact identifier of the item, including colour and size
-    prod_group_by = ['EAN' if args.EAN else 'ProductID'] # aggregate over colour and size
-    sales = merge(sales, prods, prod_merge_on, prod_group_by, prod_features)
+    #print('Merging product information')
+    #prod_features = ['Gender', 'Season', 'OriginalListedPrice']
+    #prod_merge_on = 'EAN' # exact identifier of the item, including colour and size
+    #prod_group_by = ['EAN' if args.EAN else 'ProductID'] # aggregate over colour and size
+    ##sales = merge(sales, prods, prod_merge_on, prod_group_by, prod_features)
 
     # compute the week of the year
     @timeit
@@ -86,24 +84,23 @@ def main():
     def aggregate(sales):
         print('Grouping and aggregating')
         targets = ['Volume']
-        features = ['Week'] + shop_group_by + prod_group_by + shop_features + prod_features
+        features = ['EAN', 'Week', 'StoreKey']
 
         df = sales.groupby(features)[targets].sum()
-        df.reset_index(level=df.index.names, inplace=True)
 
         return df
     df = aggregate(sales)
 
     # hack, sorry
     # (AI season is not represented in 2018 sales data, does not create a column for categorical variables)
-    if args.year == '18':
-        df.loc[0, 'Season'] = 'AI'
+    #if args.year == '18':
+    #    df.loc[0, 'Season'] = 'AI'
 
     # save the resulting dataset
     @timeit
     def save(df, outfile):
         print('Saving')
-        df.to_csv(outfile, index=False)
+        df.to_csv(outfile)
     save(df, outfile)
     print(df.head())
 
