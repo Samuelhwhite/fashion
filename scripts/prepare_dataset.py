@@ -11,22 +11,14 @@ import fashion.preprocessing as prep
 from fashion import utils
 
 
-def timeit(f):
-    def decorated(*args, **kwargs):
-        t0 = time.time()
-        r = f(*args, **kwargs)
-        print(' --> {} took {:2.2f}s'.format(f.__name__, time.time() - t0))
-        return r
-    return decorated
-
-
+@utils.timeit
 @utils.cache
 def aggregate(year):
 
     # load the dataframes
     infile = utils.loc / 'data' / '20200120_sales{}.csv'.format(year)
 
-    @timeit
+    @utils.timeit
     def load_df():
         print('Loading dataframes')
         shops = prep.load_shops()
@@ -36,7 +28,7 @@ def aggregate(year):
     shops, prods, sales = load_df()
 
     ## merge the shops and product information
-    #@timeit
+    #@utils.timeit
     #def merge(sales, df, on, gb, features):
     #    if isinstance(on, str):
     #        on = [on]
@@ -58,7 +50,7 @@ def aggregate(year):
     ##sales = merge(sales, prods, prod_merge_on, prod_group_by, prod_features)
 
     # compute the week of the year
-    @timeit
+    @utils.timeit
     def week(sales):
         print('Computing week number from date')
         sales['Week'] = pd.DatetimeIndex(sales.Date.astype(str)).week
@@ -66,7 +58,7 @@ def aggregate(year):
     sales = week(sales)
 
     # group by and aggregate
-    @timeit
+    @utils.timeit
     def aggregate(sales):
         print('Grouping and aggregating')
         targets = ['Volume']
@@ -82,7 +74,7 @@ def aggregate(year):
     #if args.year == '18':
     #    df.loc[0, 'Season'] = 'AI'
 
-    @timeit
+    @utils.timeit
     def create_dict(df):
         print('Creating a dict from the df')
         d = df.to_dict(orient='index')
@@ -92,7 +84,7 @@ def aggregate(year):
     return d
 
 
-@timeit
+@utils.timeit
 def generate_skeleton(length, EANs, weeks, store_keys):
 
     print('Generating (EAN, week, StoreKey) combinations')
@@ -106,7 +98,7 @@ def generate_skeleton(length, EANs, weeks, store_keys):
     return skeleton
 
 
-@timeit
+@utils.timeit
 def fill_skeleton(skeleton, sales):
 
     tqdm.pandas()
@@ -123,14 +115,14 @@ def fill_skeleton(skeleton, sales):
     return skeleton
 
 
-@timeit
+@utils.timeit
 def load_sales_dict(year):
     print('Loading sales dict for 20{}'.format(year))
     sales = pickle.load(open('../data/aggregate_20{}.pkl'.format(year), 'rb'))
     return sales
 
 
-@timeit
+@utils.timeit
 def sample(year, sample):
 
     print('Sampling sales dataset')
@@ -153,7 +145,7 @@ def sample(year, sample):
 
     
 
-@timeit
+@utils.timeit
 def main():
     """
     Create a dataset where each line represents cumulative sales of a product

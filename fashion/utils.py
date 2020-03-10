@@ -18,6 +18,15 @@ else:
     'with your username.\nYour username can be found by typing "echo $USER" in your terminal.')
 
 
+def timeit(f):
+    def decorated(*args, **kwargs):
+        t0 = time.time()
+        r = f(*args, **kwargs)
+        print(' --> {} took {:2.2f}s'.format(f.__name__, time.time() - t0))
+        return r
+    return decorated
+
+
 def cache(compute):
 
     @functools.wraps(compute)
