@@ -46,8 +46,8 @@ def aggregate(year):
 
     # hack, sorry
     # (AI season is not represented in 2018 sales data, does not create a column for categorical variables)
-    #if args.year == '18':
-    #    df.loc[0, 'Season'] = 'AI'
+    if year == '18':
+        df.loc[0, 'Season'] = 'AI'
 
     @utils.timeit
     def create_dict(df):
@@ -88,13 +88,6 @@ def fill_skeleton(skeleton, sales):
     skeleton['Volume'] = volume
 
     return skeleton
-
-
-@utils.timeit
-def load_sales_dict(year):
-    print('Loading sales dict for 20{}'.format(year))
-    sales = pickle.load(open('../data/aggregate_20{}.pkl'.format(year), 'rb'))
-    return sales
 
 
 @utils.timeit
@@ -147,17 +140,12 @@ def main():
                         help='which sales year to summarise')
     parser.add_argument('--force', default=False, action='store_true',
                         help='overwrite the output file')
-    parser.add_argument('--aggregate', default=False, action='store_true',
-                        help='aggregate the sales data and save as a dictionary')
     parser.add_argument('--sample', type=int, default=False, 
                         help='how many samples to generate when sampling from the dataset')
     args = parser.parse_args()
 
-    if args.aggregate:
-        aggregate(year=args.year, force=args.force)
-
     if args.sample:
-        sales = load_sales_dict(args.year)
+        sales = aggregate(year=args.year, force=args.force)
         sample(sales, year=args.year, sample=args.sample)
 
 
