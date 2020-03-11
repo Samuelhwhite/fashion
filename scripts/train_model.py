@@ -1,3 +1,5 @@
+import os
+import argparse
 import matplotlib.pyplot as plt
 import xgboost
 from sklearn.model_selection import train_test_split
@@ -9,7 +11,6 @@ import sys
 sys.path.insert(0, '..')
 import fashion.preprocessing as prep
 from fashion import utils
-
 
 
 def prepare_X(X):
@@ -50,6 +51,24 @@ def prepare_X(X):
 
 def main():
 
+    # parse the arguments
+    parser = argparse.ArgumentParser(description='prepare the dataset')
+    parser.add_argument('--name', type=str, default='default',
+                        help='Give the run a special name')
+    parser.add_argument('--force', default=False, action='store_true',
+                        help='overwrite the output file')
+    args = parser.parse_args()
+
+    # output location
+    outloc = utils.loc / 'data' / 'trained_model_{}'.format(args.name)
+    if outloc.exists():
+        if args.force:
+            os.system('rm -r {}'.format(outloc))
+        else:
+            print('Model with name {} already exists, please choose another model or use the --force to overwrite.')
+            exit()
+    outloc.mkdir(parents=True)
+
     # load the dataset
     df17 = pd.read_csv(utils.loc / 'data' / 'data17_sample100000.csv')
     df18 = pd.read_csv(utils.loc / 'data' / 'data18_sample100000.csv')
@@ -89,6 +108,9 @@ def main():
                           )
     print(model.attributes())
 
+    # save the model
+
+
     # compute the losses throughout the training 
     print('Computing predictions for partial models (first x trees)')
     num_trees = len(model.get_dump())
@@ -110,7 +132,7 @@ def main():
     ax.legend()
     ax.set_xlabel('Training stage')
     ax.set_ylabel('Mean absolute error')
-    plt.savefig(utils.loc / 'figures' / 'training' / 'BaselineTraining.pdf')
+    plt.savefig(outloc / 'LossHistory.pdf')
 
 
 if __name__ == '__main__':
