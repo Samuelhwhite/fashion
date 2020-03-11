@@ -35,19 +35,13 @@ def aggregate(year):
 
     # group by and aggregate
     @utils.timeit
-    def aggregate(sales):
+    def agg(sales):
         print('Grouping and aggregating')
         targets = ['Volume']
         features = ['EAN', 'Week', 'StoreKey']
         df = sales.groupby(features)[targets].sum()
         return df
-
-    df = aggregate(sales)
-
-    # hack, sorry
-    # (AI season is not represented in 2018 sales data, does not create a column for categorical variables)
-    if year == '18':
-        df.loc[0, 'Season'] = 'AI'
+    df = agg(sales)
 
     @utils.timeit
     def create_dict(df):
@@ -124,6 +118,11 @@ def sample(sales, year, sample):
     prod_on = 'EAN'
     skeleton = merge(skeleton, prods, prod_features, prod_on)
 
+    # hack, sorry
+    # (AI season is not represented in 2018 sales data, does not create a column for categorical variables)
+    if year == '18':
+        skeleton.loc[0, 'Season'] = 'AI'
+
     return skeleton
 
 
@@ -146,7 +145,8 @@ def main():
 
     if args.sample:
         sales = aggregate(year=args.year, force=args.force)
-        sample(sales, year=args.year, sample=args.sample)
+        s = sample(sales, year=args.year, sample=args.sample)
+        s.to_csv(utils.loc / 'data' / 'data{}_sample{}.csv'.format(args.year, args.sample))
 
 
 if __name__ == '__main__':
