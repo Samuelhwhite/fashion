@@ -21,7 +21,7 @@ def aggregate(year):
     @utils.timeit
     def load_df():
         print('Loading dataframes')
-        sales = prep.load_sales(infile, nrows=1000) #TODO
+        sales = prep.load_sales(infile)
         return sales
     sales = load_df()
 
@@ -54,7 +54,7 @@ def aggregate(year):
         print('Creating a dict from the df')
         d = df.to_dict(orient='index')
         return d
-    d = create_dict(df.head(1000)) #TODO
+    d = create_dict(df)
 
     return d
 
@@ -105,7 +105,7 @@ def merge(skeleton, df, features, on):
 
 
 @utils.timeit
-def sample(year, sample):
+def sample(sales, year, sample):
 
     print('Sampling sales dataset')
 
@@ -117,7 +117,6 @@ def sample(year, sample):
     skeleton = generate_skeleton(sample, EANs, weeks, store_keys)
 
     # fill with the existing sales
-    sales = load_sales_dict(year)
     skeleton = fill_skeleton(skeleton, sales)
 
     # merge shops features
@@ -134,7 +133,6 @@ def sample(year, sample):
 
     return skeleton
 
-    
 
 @utils.timeit
 def main():
@@ -159,7 +157,8 @@ def main():
         aggregate(year=args.year, force=args.force)
 
     if args.sample:
-        sample(year=args.year, sample=args.sample)
+        sales = load_sales_dict(args.year)
+        sample(sales, year=args.year, sample=args.sample)
 
 
 if __name__ == '__main__':
