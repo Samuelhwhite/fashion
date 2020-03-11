@@ -71,6 +71,7 @@ def get_api_key():
     return api_key
 
 
+
 def load_shops(path):
     
     # load
@@ -115,6 +116,7 @@ def load_Product(path):
     df.rename(inplace=True, columns=dict(zip(df.columns, new_columns)))
 
     return df
+
 
 
 if state == 'mac':
