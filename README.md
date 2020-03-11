@@ -42,12 +42,14 @@ python split_sales.py
 ```
 
 Prepare the baseline dataset: Each line represents the aggregated sales of an
-item in a particular store during a particular week.
+item in a particular store during a particular week. Since full dataset including
+points when no items are sold is too large, a subsampling is used. Number of
+points to sample is determined by the --sample argument.
 ```
 cd scripts/
-python prepare_dataset.py --year 17
-python prepare_dataset.py --year 18
-python prepare_dataset.py --year 19
+python prepare_dataset.py --year 17 --sample 100000
+python prepare_dataset.py --year 18 --sample 100000
+python prepare_dataset.py --year 19 --sample 100000
 ```
 
 ### 2.2 Train an xgboost model

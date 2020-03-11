@@ -51,8 +51,8 @@ def prepare_X(X):
 def main():
 
     # load the dataset
-    df17 = pd.read_csv(utils.loc / 'data' / 'basic_2017.csv')
-    df18 = pd.read_csv(utils.loc / 'data' / 'basic_2018.csv')
+    df17 = pd.read_csv(utils.loc / 'data' / 'data17_sample100000.csv')
+    df18 = pd.read_csv(utils.loc / 'data' / 'data18_sample100000.csv')
 
     # define the features and the target
     features = ['Week', 'Franchise', 'Gender', 'Season', 'OriginalListedPrice']
@@ -90,6 +90,7 @@ def main():
     print(model.attributes())
 
     # compute the losses throughout the training 
+    print('Computing predictions for partial models (first x trees)')
     num_trees = len(model.get_dump())
     val_loss = []
     train_loss = []
