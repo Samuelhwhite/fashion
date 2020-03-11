@@ -2,6 +2,7 @@ import time
 import pickle
 import requests
 import json
+import functools
 import numpy as np
 import pandas as pd
 
@@ -20,6 +21,47 @@ else:
     print('"loc" variable not defined.\nEdit the first few lines of fashion/utils.py '+
     'with your username.\nYour username can be found by typing "echo $USER" in your terminal.')
 
+
+
+def timeit(f):
+    def decorated(*args, **kwargs):
+        t0 = time.time()
+        r = f(*args, **kwargs)
+        print(' --> {} took {:2.2f}s'.format(f.__name__, time.time() - t0))
+        return r
+    return decorated
+
+
+def cache(compute):
+
+    @functools.wraps(compute)
+    def wrapper(*args, force=False, **kwargs):
+
+        # determine the file we are looking for
+        args_str = ''.join(['_'+str(a) for a in args])
+        kwargs_str = ''.join(['_{}{}'.format(k, kwargs[k]) for k in kwargs])
+        fname = 'cache_{}{}{}.pkl'.format(compute.__name__, args_str, kwargs_str)
+        fpath = loc / 'data' / fname
+
+        # delete if forced to recompute
+        if force and fpath.exists():
+            print('Force-deleting cache {}'.format(fpath))
+            fpath.unlink()
+
+        # check cache
+        if fpath.exists():
+            print('Loading from cache {}'.format(fpath))
+            res = pickle.load(open(fpath, 'rb'))
+
+        # otherwise compute and cache
+        else:
+            print('Cache {} not found, computing.'.format(fpath))
+            res = compute(*args, **kwargs)
+            pickle.dump(res, open(fpath, 'wb'))
+
+        return res
+
+    return wrapper
 
 
 

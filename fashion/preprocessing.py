@@ -1,6 +1,8 @@
+import itertools
 import pandas as pd
 import numpy as np
 import pickle
+import time
 import sys
 import os
 sys.path.insert(0, '..')
@@ -56,7 +58,7 @@ def get_nproducts_in_shop(shops, kind):
             counts = gb["EAN"].nunique()
         elif kind == 'Total':
             counts = gb["Volume"].sum()
-            
+
         prod_counts = {sk:counts[sk] for sk in shops.StoreKey if sk in counts}
         pickle.dump(prod_counts, open(fpath, 'wb'))
 
@@ -97,7 +99,7 @@ def load_sales(path=utils.loc / 'data' / '20200120_sales17.csv', shops_df=load_s
 
 def load_products(path=utils.loc / 'data' / '20200120_barcode.csv'):
 
-    # load the 
+    # load the
     df = pd.read_csv(path, low_memory=False)
 
     # translate the columns
@@ -126,32 +128,134 @@ def load_products(path=utils.loc / 'data' / '20200120_barcode.csv'):
     populars = df[cd].value_counts().index[:nkeep]
     df[cd] = df[cd].apply(lambda s: s if s in populars else 'other')
 
+    # keep only the most common sizes (such that 95% of items retain their size, other sizes will be marked as 'other')
+    size = 'Size'
+    cs = np.cumsum(df[size].value_counts())
+    nkeep = np.sum(cs < 0.95 * cs.iloc[-1])
+    populars = df[size].value_counts().index[:nkeep]
+    df[size] = df[size].apply(lambda s: s if s in populars else 'other')
+
     return df
-    
 
-def get_stores_in_sales_data():
 
-    fname = utils.loc / 'data' / 'sales_stores.csv'
-    if os.path.exists(fname):
-        print('loading')
-        sales_stores = pickle.load(open(fname, 'rb'))
+@utils.cache
+def unique_in_sales_data(column, year):
+    """
+    Return unique values of column in sales data of year.
 
-    else:
-        print('computing')
-        sales17 = load_sales(utils.loc / 'data' / '20200120_sales17.csv')
-        stores17 = sales17.StoreKey.unique()
-        sales1819 = load_sales(utils.loc / 'data' / '20200120_sales1819.csv')
-        stores1819 = sales1819.StoreKey.unique()
+    Arguments:
+        column (str): 'StoreKey' or 'EAN'
+        year (str): '17', '18', '19'
+    """
 
-        sales_stores = set(stores17).union(set(stores1819))
-        pickle.dump(sales_stores, open(fname, 'wb'))
+    sales = load_sales(utils.loc / 'data' / '20200120_sales{}.csv'.format(year))
+    uniques = sales[column].unique()
 
-    return sales_stores
+    return uniques
+
+
+@utils.cache
+def size_groups():
+
+    prods = load_products()
+    pids = prods.ProductID.unique()
+    groups = set()
+    pid2group = {}
+    for i, pid in enumerate(pids):
+
+        group = tuple(s for s in prods[prods.ProductID == pid].Size.unique())
+        groups.add(group)
+        pid2group[pid] = group
+
+    both = groups, pid2group
+
+    return both
+
+
+@utils.cache
+def size_corrections():
+
+    # load sales data (17 only)
+    sales = load_sales()
+
+    # prepare some mappings
+    groups, pid2group = size_groups()
+
+    ean2pid = EAN2pid()
+    ean2size = EAN2size()
+
+    # compute the dict
+    N_total = len(sales)
+    N_test = 10000
+    dist = {pid:{s:0 for s in pid2group[pid]} for pid in pid2group}
+
+    t0 = time.time()
+    for i in range(len(sales)):
+        row = sales.iloc[i]
+        ean = row['EAN']
+        pid = ean2pid[ean]
+        size = ean2size[ean]
+        dist[pid][size] += 1
+
+        if i == N_test:
+            minutes_taken = (time.time()-t0) / 60
+            minutes_total = N_total / N_test * minutes_taken
+            print('based on loop of {}, full run will take {:.2f}m'.format(N_test, minutes_total))
+            continue
+
+    # divide by the total for each product
+    sc = {p:{s:0 for s in dist[p]} for p in dist}
+    for p in dist:
+        total = np.sum([c for c in dist[p].values()])
+        if total == 0:
+            print('WARNING: no products found for {}, {}'.format(p, dist[p]))
+            continue
+        corrections = {s:dist[p][s] / total for s in dist[p]}
+        sc[p] = corrections
+
+    return sc
+
+
+@utils.cache
+def EAN2size():
+
+    # compute the dict
+    prods = load_products()
+
+    e2s = {}
+    for i in range(len(prods)):
+        row = prods.iloc[i]
+        e2s[row['EAN']] = row['Size']
+
+    return e2s
+
+
+@utils.cache
+def EAN2pid():
+
+    # compute the dict
+    prods = load_products()
+
+    e2p = {}
+    for i in range(len(prods)):
+        row = prods.iloc[i]
+        e2p[row['EAN']] = row['ProductID']
+
+    return e2p
 
 
 def main():
 
-    shops = load_shops()
+    #shops = load_shops()
+
+    o = EAN2pid()
+    i = EAN2size()
+    s = size_groups()
+    for k, y in itertools.product(['StoreKey', 'EAN'], [17, 18, 19]):
+        print(k, y)
+        s = unique_in_sales_data(k, y)
+    #sc = size_corrections()
+
 
     #import matplotlib.pyplot as plt
     #for var in ['NTotalProductsSold', 'NUniqueProductsSold']:
