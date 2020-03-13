@@ -58,7 +58,7 @@ Train a benchmark model on the dataset.
 
 ```
 cd scripts/
-python train_model.py
+py modelling.py --evaluate
 ```
 
 
