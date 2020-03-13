@@ -48,26 +48,7 @@ def prepare_X(X):
 
     return X
 
-
-def main():
-
-    # parse the arguments
-    parser = argparse.ArgumentParser(description='prepare the dataset')
-    parser.add_argument('--name', type=str, default='default',
-                        help='Give the run a special name')
-    parser.add_argument('--force', default=False, action='store_true',
-                        help='overwrite the output file')
-    args = parser.parse_args()
-
-    # output location
-    outloc = utils.loc / 'data' / 'trained_model_{}'.format(args.name)
-    if outloc.exists():
-        if args.force:
-            os.system('rm -r {}'.format(outloc))
-        else:
-            print('Model with name {} already exists, please choose another model or use the --force to overwrite.')
-            exit()
-    outloc.mkdir(parents=True)
+def load_datasets():
 
     # load the dataset
     df17 = pd.read_csv(utils.loc / 'data' / 'data17_sample100000.csv')
@@ -89,6 +70,25 @@ def main():
     Y_valid = df18[target]
     m_valid = xgboost.DMatrix(X_valid, label=Y_valid)
 
+    return m_train, m_valid
+
+
+def train_model(args, outloc):
+
+    print('Training model {}'.format(args.name))
+
+    # output location
+    if outloc.exists():
+        if args.force:
+            os.system('rm -r {}'.format(outloc))
+        else:
+            print('Model with name {} already exists, please choose another model or use the --force to overwrite.'.format(args.name))
+            exit()
+    outloc.mkdir(parents=True)
+
+    # load dataset
+    m_train, m_valid = load_datasets()
+
     # prepare the model
     num_round = 1000
     params = {'max_depth': 4,
@@ -106,10 +106,31 @@ def main():
                           early_stopping_rounds=5,
                           #verbose_eval=100)
                           )
-    print(model.attributes())
 
     # save the model
+    model.save_model(str(outloc / 'model.xgb'))
+    return model
 
+
+def evaluate_model(args, outloc):
+
+    # get the model
+    try:
+        print('Loading model {}'.format(args.name))
+        model = xgboost.Booster()
+        model.load_model(str(outloc / 'model.xgb'))
+    except xgboost.core.XGBoostError:
+        print('No such model exists, training it from scratch.')
+        model = train_model(args, outloc)
+
+    # get the dataset
+    m_train, m_valid = load_datasets()
+    Y_train = m_train.get_label()
+    Y_valid = m_valid.get_label()
+
+    # compute the baseline loss when using the dataset mean
+    mean = Y_train.mean()
+    error = np.mean(np.abs(Y_train - mean))
 
     # compute the losses throughout the training 
     print('Computing predictions for partial models (first x trees)')
@@ -129,10 +150,37 @@ def main():
     fig, ax = plt.subplots()
     ax.plot(trees, val_loss, label='validation loss')
     ax.plot(trees, train_loss, label='train loss')
+    ax.plot([trees[0], trees[-1]], [error, error], 'k:', label='dataset mean')
+    ax.set_ylim(0.10, 0.15)
     ax.legend()
     ax.set_xlabel('Training stage')
     ax.set_ylabel('Mean absolute error')
     plt.savefig(outloc / 'LossHistory.pdf')
+
+
+def main():
+
+    # parse the arguments
+    parser = argparse.ArgumentParser(description='prepare the dataset')
+    parser.add_argument('--name', type=str, default='default',
+                        help='Give the run a special name')
+    parser.add_argument('--force', default=False, action='store_true',
+                        help='overwrite the output file')
+    parser.add_argument('--train', default=False, action='store_true',
+                        help='train the model')
+    parser.add_argument('--evaluate', default=False, action='store_true',
+                        help='evaluate the model')
+    args = parser.parse_args()
+
+    # model directory
+    outloc = utils.loc / 'data' / 'trained_model_{}'.format(args.name)
+
+    # train
+    if args.train:
+        train_model(args, outloc)
+
+    if args.evaluate:
+        evaluate_model(args, outloc)
 
 
 if __name__ == '__main__':
