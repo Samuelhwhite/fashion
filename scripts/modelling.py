@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import xgboost
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 import pandas as pd
 import numpy as np
 import sys
@@ -131,10 +131,19 @@ def evaluate_model(args, outloc):
     Y_train = m_train.get_label()
     Y_valid = m_valid.get_label()
 
+    def root_mean_square(y_true, y_pred):
+        return mean_squared_error(y_true, y_pred, squared=False)
+
+    for loss in [mean_absolute_error, root_mean_square]:
+        plot_loss_history(model, loss, m_train, m_valid, Y_train, Y_valid, outloc)
+
+
+def plot_loss_history(model, loss, m_train, m_valid, Y_train, Y_valid, outloc):
+
     # compute the baseline loss when using the dataset mean
     mean_preds = Y_train.mean() * np.ones(Y_train.shape)
-    train_error = mean_absolute_error(Y_train, mean_preds)
-    valid_error = mean_absolute_error(Y_valid, mean_preds)
+    train_error = loss(Y_train, mean_preds)
+    valid_error = loss(Y_valid, mean_preds)
 
     # compute the losses throughout the training 
     print('Computing predictions for partial models (first x trees)')
@@ -145,10 +154,10 @@ def evaluate_model(args, outloc):
     for t in trees:
         # validation
         y_pred = model.predict(m_valid, ntree_limit=t)
-        val_loss.append(mean_absolute_error(Y_valid, y_pred))
+        val_loss.append(loss(Y_valid, y_pred))
         # training
         y_pred = model.predict(m_train, ntree_limit=t)
-        train_loss.append(mean_absolute_error(Y_train, y_pred))
+        train_loss.append(loss(Y_train, y_pred))
 
     # create the training plot
     fig, ax = plt.subplots()
@@ -156,11 +165,11 @@ def evaluate_model(args, outloc):
     ax.plot(trees, train_loss, color='C1', label='train loss')
     ax.plot(trees, valid_error*np.ones(trees.shape), color='C0', linestyle=':', label='baseline valid')
     ax.plot(trees, train_error*np.ones(trees.shape), color='C1', linestyle=':', label='baseline train')
-    ax.set_ylim(0, 0.15)
+    ax.set_ylim(0, 1.2 * valid_error)
     ax.legend()
     ax.set_xlabel('Training stage')
-    ax.set_ylabel('Mean absolute error')
-    plt.savefig(outloc / 'LossHistory.pdf')
+    ax.set_ylabel(loss.__name__)
+    plt.savefig(outloc / 'History_{}.pdf'.format(loss.__name__))
 
 
 def main():
