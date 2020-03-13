@@ -92,9 +92,11 @@ def merge(skeleton, df, features, on):
 
 
 @utils.timeit
-def sample(sales, year, sample):
+@utils.cache
+def sample(year, sample, force=False):
 
     print('Sampling sales dataset')
+    sales = aggregate(year=year, force=force)
 
     # prepare EANs sold and store keys available in the year
     EANs, store_keys = (prep.unique_in_sales_data(c, year) for c in ['EAN', 'StoreKey'])
@@ -144,9 +146,7 @@ def main():
     args = parser.parse_args()
 
     if args.sample:
-        sales = aggregate(year=args.year, force=args.force)
-        s = sample(sales, year=args.year, sample=args.sample)
-        s.to_csv(utils.loc / 'data' / 'data{}_sample{}.csv'.format(args.year, args.sample))
+        s = sample(args.year, args.sample, force=args.force)
 
 
 if __name__ == '__main__':
