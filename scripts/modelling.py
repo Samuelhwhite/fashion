@@ -11,6 +11,7 @@ import sys
 sys.path.insert(0, '..')
 import fashion.preprocessing as prep
 from fashion import utils
+import prepare_dataset
 
 
 def prepare_X(X):
@@ -48,11 +49,13 @@ def prepare_X(X):
 
     return X
 
-def load_datasets():
+def load_datasets(args):
 
     # load the dataset
-    df17 = pd.read_csv(utils.loc / 'data' / 'data17_sample100000.csv')
-    df18 = pd.read_csv(utils.loc / 'data' / 'data18_sample100000.csv')
+    #df17 = pd.read_csv(utils.loc / 'data' / 'data17_sample100000.csv')
+    df17 = prepare_dataset.sample('17', args.sample)
+    df18 = prepare_dataset.sample('18', args.sample)
+    #df18 = pd.read_csv(utils.loc / 'data' / 'data18_sample100000.csv')
 
     # define the features and the target
     features = ['Week', 'Franchise', 'Gender', 'Season', 'OriginalListedPrice']
@@ -87,7 +90,7 @@ def train_model(args, outloc):
     outloc.mkdir(parents=True)
 
     # load dataset
-    m_train, m_valid = load_datasets()
+    m_train, m_valid = load_datasets(args)
 
     # prepare the model
     num_round = 1000
@@ -124,20 +127,21 @@ def evaluate_model(args, outloc):
         model = train_model(args, outloc)
 
     # get the dataset
-    m_train, m_valid = load_datasets()
+    m_train, m_valid = load_datasets(args)
     Y_train = m_train.get_label()
     Y_valid = m_valid.get_label()
 
     # compute the baseline loss when using the dataset mean
-    mean = Y_train.mean()
-    error = np.mean(np.abs(Y_train - mean))
+    mean_preds = Y_train.mean() * np.ones(Y_train.shape)
+    train_error = mean_absolute_error(Y_train, mean_preds)
+    valid_error = mean_absolute_error(Y_valid, mean_preds)
 
     # compute the losses throughout the training 
     print('Computing predictions for partial models (first x trees)')
     num_trees = len(model.get_dump())
     val_loss = []
     train_loss = []
-    trees = range(1, num_trees)
+    trees = np.array([t for t in range(1, num_trees)])
     for t in trees:
         # validation
         y_pred = model.predict(m_valid, ntree_limit=t)
@@ -148,10 +152,11 @@ def evaluate_model(args, outloc):
 
     # create the training plot
     fig, ax = plt.subplots()
-    ax.plot(trees, val_loss, label='validation loss')
-    ax.plot(trees, train_loss, label='train loss')
-    ax.plot([trees[0], trees[-1]], [error, error], 'k:', label='dataset mean')
-    ax.set_ylim(0.10, 0.15)
+    ax.plot(trees, val_loss, color='C0', label='validation loss')
+    ax.plot(trees, train_loss, color='C1', label='train loss')
+    ax.plot(trees, valid_error*np.ones(trees.shape), color='C0', linestyle=':', label='baseline valid')
+    ax.plot(trees, train_error*np.ones(trees.shape), color='C1', linestyle=':', label='baseline train')
+    ax.set_ylim(0, 0.15)
     ax.legend()
     ax.set_xlabel('Training stage')
     ax.set_ylabel('Mean absolute error')
@@ -164,6 +169,8 @@ def main():
     parser = argparse.ArgumentParser(description='prepare the dataset')
     parser.add_argument('--name', type=str, default='default',
                         help='Give the run a special name')
+    parser.add_argument('--sample', type=int, default=100000,
+                        help='Number of samples from the full dataset')
     parser.add_argument('--force', default=False, action='store_true',
                         help='overwrite the output file')
     parser.add_argument('--train', default=False, action='store_true',
@@ -173,7 +180,7 @@ def main():
     args = parser.parse_args()
 
     # model directory
-    outloc = utils.loc / 'data' / 'trained_model_{}'.format(args.name)
+    outloc = utils.loc / 'data' / 'model_{}_{}'.format(args.name, args.sample)
 
     # train
     if args.train:
