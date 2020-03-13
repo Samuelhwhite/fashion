@@ -52,10 +52,8 @@ def prepare_X(X):
 def load_datasets(args):
 
     # load the dataset
-    #df17 = pd.read_csv(utils.loc / 'data' / 'data17_sample100000.csv')
     df17 = prepare_dataset.sample('17', args.sample)
     df18 = prepare_dataset.sample('18', args.sample)
-    #df18 = pd.read_csv(utils.loc / 'data' / 'data18_sample100000.csv')
 
     # define the features and the target
     features = ['Week', 'Franchise', 'Gender', 'Season', 'OriginalListedPrice']
@@ -67,13 +65,11 @@ def load_datasets(args):
     # prepare the train and test parts
     X_train = prepare_X(df17[features])
     Y_train = df17[target]
-    m_train = xgboost.DMatrix(X_train, label=Y_train)
 
     X_valid = prepare_X(df18[features])
     Y_valid = df18[target]
-    m_valid = xgboost.DMatrix(X_valid, label=Y_valid)
 
-    return m_train, m_valid
+    return X_train, X_valid, Y_train, Y_valid
 
 
 def train_model(args, outloc):
@@ -90,7 +86,9 @@ def train_model(args, outloc):
     outloc.mkdir(parents=True)
 
     # load dataset
-    m_train, m_valid = load_datasets(args)
+    X_train, X_valid, Y_train, Y_valid = load_datasets(args)
+    m_train = xgboost.DMatrix(X_train, label=Y_train)
+    m_valid = xgboost.DMatrix(X_valid, label=Y_valid)
 
     # prepare the model
     num_round = 1000
@@ -127,18 +125,57 @@ def evaluate_model(args, outloc):
         model = train_model(args, outloc)
 
     # get the dataset
-    m_train, m_valid = load_datasets(args)
-    Y_train = m_train.get_label()
-    Y_valid = m_valid.get_label()
+    X_train, X_valid, Y_train, Y_valid = load_datasets(args)
+    m_train = xgboost.DMatrix(X_train, label=Y_train)
+    m_valid = xgboost.DMatrix(X_valid, label=Y_valid)
 
+    # plot the training history
     def root_mean_square(y_true, y_pred):
         return mean_squared_error(y_true, y_pred, squared=False)
 
-    for loss in [mean_absolute_error, root_mean_square]:
-        plot_loss_history(model, loss, m_train, m_valid, Y_train, Y_valid, outloc)
+    #for loss in [mean_absolute_error, root_mean_square]:
+    #    plot_loss_history(model, loss, m_train, m_valid, outloc)
+
+    # plot the model predictions as a function of variables
+    for var in ['Week', 'NUniqueProductsSold', 'NTotalProductsSold']:
+        plot_model_predictions(model, var, X_train, X_valid, Y_train, Y_valid, outloc)
 
 
-def plot_loss_history(model, loss, m_train, m_valid, Y_train, Y_valid, outloc):
+def plot_model_predictions(model, var, X_train, X_valid, Y_train, Y_valid, outloc):
+
+    # prepare the dataset
+    m_train = xgboost.DMatrix(X_train, label=Y_train)
+    m_valid = xgboost.DMatrix(X_valid, label=Y_valid)
+
+    df_valid = X_valid.copy()
+    df_valid['Volume'] = Y_valid
+    df_valid['Predicted'] = model.predict(m_valid)
+
+    df_train = X_train.copy()
+    df_train['Volume'] = Y_train
+    df_train['Predicted'] = model.predict(m_train)
+
+    # compute averages
+    gb_valid = df_valid.groupby(var).mean()[['Volume', 'Predicted']]
+    gb_train = df_train.groupby(var).mean()[['Volume', 'Predicted']]
+
+    # make the plot
+    fig, ax = plt.subplots()
+    ax.plot(gb_valid.index, gb_valid['Volume'], c='C0', linestyle='-', label='valid (2018): sales volume')
+    ax.plot(gb_valid.index, gb_valid['Predicted'], c='C0', linestyle='--', label='valid (2018): model prediction')
+    ax.plot(gb_train.index, gb_train['Volume'], c='C1', linestyle='-', label='train (2017): sales volume')
+    ax.plot(gb_train.index, gb_train['Predicted'], c='C1', linestyle='--', label='train (2017): model prediction')
+    ax.set_ylabel('(predicted) sales volume')
+    ax.set_xlabel(var)
+    ax.legend()
+    plt.savefig(outloc / 'Averages_{}.pdf'.format(var))
+
+
+def plot_loss_history(model, loss, m_train, m_valid, outloc):
+
+    # take out
+    Y_train = m_train.get_label()
+    Y_valid = m_valid.get_label()
 
     # compute the baseline loss when using the dataset mean
     mean_preds = Y_train.mean() * np.ones(Y_train.shape)
