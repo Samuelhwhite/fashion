@@ -35,19 +35,13 @@ def aggregate(year):
 
     # group by and aggregate
     @utils.timeit
-    def aggregate(sales):
+    def agg(sales):
         print('Grouping and aggregating')
         targets = ['Volume']
         features = ['EAN', 'Week', 'StoreKey']
         df = sales.groupby(features)[targets].sum()
         return df
-
-    df = aggregate(sales)
-
-    # hack, sorry
-    # (AI season is not represented in 2018 sales data, does not create a column for categorical variables)
-    if year == '18':
-        df.loc[0, 'Season'] = 'AI'
+    df = agg(sales)
 
     @utils.timeit
     def create_dict(df):
@@ -98,9 +92,11 @@ def merge(skeleton, df, features, on):
 
 
 @utils.timeit
-def sample(sales, year, sample):
+@utils.cache
+def sample(year, sample, force=False):
 
     print('Sampling sales dataset')
+    sales = aggregate(year=year, force=force)
 
     # prepare EANs sold and store keys available in the year
     EANs, store_keys = (prep.unique_in_sales_data(c, year) for c in ['EAN', 'StoreKey'])
@@ -124,6 +120,11 @@ def sample(sales, year, sample):
     prod_on = 'EAN'
     skeleton = merge(skeleton, prods, prod_features, prod_on)
 
+    # hack, sorry
+    # (AI season is not represented in 2018 sales data, does not create a column for categorical variables)
+    if year == '18':
+        skeleton.loc[0, 'Season'] = 'AI'
+
     return skeleton
 
 
@@ -145,8 +146,7 @@ def main():
     args = parser.parse_args()
 
     if args.sample:
-        sales = aggregate(year=args.year, force=args.force)
-        sample(sales, year=args.year, sample=args.sample)
+        s = sample(args.year, args.sample, force=args.force)
 
 
 if __name__ == '__main__':
