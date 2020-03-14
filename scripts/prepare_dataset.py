@@ -2,7 +2,7 @@ import argparse
 import pickle
 import os
 import time
-import pandas as pd
+
 from tqdm.auto import tqdm
 import numpy as np
 import sys
@@ -10,6 +10,8 @@ sys.path.insert(0, '..')
 import fashion.preprocessing as prep
 from fashion import utils
 
+
+import pandas as pd
 
 @utils.timeit
 @utils.cache
