@@ -43,13 +43,8 @@ def cache(compute):
         fname = 'cache_{}{}{}.pkl'.format(compute.__name__, args_str, kwargs_str)
         fpath = loc / 'data' / fname
 
-        # delete if forced to recompute
-        if force and fpath.exists():
-            print('Force-deleting cache {}'.format(fpath))
-            fpath.unlink()
-
         # check cache
-        if fpath.exists():
+        if fpath.exists() and not force:
             print('Loading from cache {}'.format(fpath))
             res = pickle.load(open(fpath, 'rb'))
 
