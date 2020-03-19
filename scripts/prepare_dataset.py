@@ -9,7 +9,7 @@ import sys
 sys.path.insert(0, '..')
 import fashion.preprocessing as prep
 from fashion import utils
-
+np.random.seed(2020)
 
 @utils.timeit
 @utils.cache
