@@ -59,7 +59,8 @@ def get_nproducts_in_shop(shops, kind):
         elif kind == 'Total':
             counts = gb["Volume"].sum()
 
-        prod_counts = {sk:counts[sk] for sk in shops.StoreKey if sk in counts}
+        # round to 10k
+        prod_counts = {sk:(counts[sk] // 10000) * 10000  for sk in shops.StoreKey if sk in counts}
         pickle.dump(prod_counts, open(fpath, 'wb'))
 
     # return an array of counts
@@ -246,14 +247,14 @@ def EAN2pid():
 
 def main():
 
-    #shops = load_shops()
+    shops = load_shops()
 
-    o = EAN2pid()
-    i = EAN2size()
-    s = size_groups()
-    for k, y in itertools.product(['StoreKey', 'EAN'], [17, 18, 19]):
-        print(k, y)
-        s = unique_in_sales_data(k, y)
+    #o = EAN2pid()
+    #i = EAN2size()
+    #s = size_groups()
+    #for k, y in itertools.product(['StoreKey', 'EAN'], [17, 18, 19]):
+    #    print(k, y)
+    #    s = unique_in_sales_data(k, y)
     #sc = size_corrections()
 
 
