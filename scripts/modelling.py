@@ -133,11 +133,11 @@ def evaluate_model(args, outloc):
     def root_mean_square(y_true, y_pred):
         return mean_squared_error(y_true, y_pred, squared=False)
 
-    #for loss in [mean_absolute_error, root_mean_square]:
-    #    plot_loss_history(model, loss, m_train, m_valid, outloc)
+    for loss in [mean_absolute_error, root_mean_square]:
+        plot_loss_history(model, loss, m_train, m_valid, outloc)
 
     # plot the model predictions as a function of variables
-    for var in ['Week', 'NUniqueProductsSold', 'NTotalProductsSold']:
+    for var in X_train.columns:
         plot_model_predictions(model, var, X_train, X_valid, Y_train, Y_valid, outloc)
 
 
