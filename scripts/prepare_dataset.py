@@ -37,11 +37,15 @@ def aggregate(year):
     @utils.timeit
     def agg(sales):
         print('Grouping and aggregating')
-        targets = ['Volume']
+        targets = ['Volume', 'NetIncome']
         features = ['EAN', 'Week', 'StoreKey']
         df = sales.groupby(features)[targets].sum()
         return df
     df = agg(sales)
+
+    # compute the average price
+    epsilon = 1e-8
+    df.eval('AvgPrice = (NetIncome+@epsilon) / (Volume + @epsilon)', inplace=True)
 
     @utils.timeit
     def create_dict(df):
@@ -71,15 +75,16 @@ def generate_skeleton(length, EANs, weeks, store_keys):
 def fill_skeleton(skeleton, sales):
 
     tqdm.pandas()
-    def change_volume(row, sales):
+    def change_variable(row, sales, variable):
         e, w, sk = row['EAN'], row['Week'], row['StoreKey']
         try:
-            vol = sales[(e, w, sk)]['Volume']
+            vol = sales[(e, w, sk)][variable]
             return vol
         except KeyError:
             return 0
-    volume = skeleton.progress_apply(lambda row: change_volume(row, sales), axis=1)
-    skeleton['Volume'] = volume
+
+    for var in ['Volume', 'AvgPrice']:
+        skeleton[var] = skeleton.progress_apply(lambda row: change_variable(row, sales, var), axis=1)
 
     return skeleton
 
@@ -119,6 +124,14 @@ def sample(year, sample, force=False):
     prod_features = ['Gender', 'Season', 'OriginalListedPrice']
     prod_on = 'EAN'
     skeleton = merge(skeleton, prods, prod_features, prod_on)
+
+    # set AvgPrice to OriginalListedPrice if no products sold
+    skeleton['AvgPrice'] = np.where(skeleton['Volume'] == 0, skeleton['OriginalListedPrice'], skeleton['AvgPrice'])
+
+    # compute the discount
+    skeleton.eval('AvgDiscount = 1 - (AvgPrice / OriginalListedPrice)', inplace=True)
+    skeleton.AvgDiscount = skeleton.AvgDiscount.round(2) # round to two decimals
+    skeleton['AvgDiscount'] = np.where(skeleton['AvgDiscount'] < 0, 0, skeleton['AvgDiscount']) # polish some anomalies where avg price is higher than original price
 
     # hack, sorry
     # (AI season is not represented in 2018 sales data, does not create a column for categorical variables)

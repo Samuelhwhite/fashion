@@ -60,7 +60,7 @@ def load_datasets(args):
     target = 'Volume'
 
     # and add the features that were computed rather than directly available
-    features += ['NUniqueProductsSold', 'NTotalProductsSold']
+    features += ['NUniqueProductsSold', 'NTotalProductsSold', 'AvgDiscount']
 
     # prepare the train and test parts
     X_train = prepare_X(df17[features])
