@@ -5,6 +5,8 @@ import pickle
 import time
 import sys
 import os
+from datetime import datetime
+import math
 sys.path.insert(0, '..')
 from fashion import utils
 
@@ -32,7 +34,8 @@ def load_shops(path=utils.loc / 'data' / '20200120_filiali.csv', extra_info=True
     if extra_info:
         for kind in ['Unique', 'Total']:
             df['N{}ProductsSold'.format(kind)] = get_nproducts_in_shop(df, kind)
-
+        df['NightIndex'] = night_sales_index(df)
+        df['WeekendIndex'] = weekend_sales_index(df)
     return df
 
 
@@ -71,7 +74,93 @@ def get_nproducts_in_shop(shops, kind):
 
     return res
 
+def night_sales_index(shops):
+    # load or compute the number of products sold in each store
+    fpath = utils.loc / 'data' / 'night_sales_index.pkl'
+    print(fpath)
+    if os.path.exists(fpath):
+        print('Loading Night sales index')
+        night_index = pickle.load(open(fpath, 'rb'))
+        
+    else:
+        print('Computing Night sales index')
+        # load and concatenate sales
+        sales17 = load_sales(utils.loc / 'data' / '20200120_sales17.csv', shops)
+        sales1819 = load_sales(utils.loc / 'data' / '20200120_sales1819.csv', shops)
+        sales = pd.concat([sales17, sales1819], axis=0)
+        # add new feature representing night sales
+        sales['Night_sales'] = sales['Hour'].apply(lambda x:night_classify(x))
+        sales_night = sales[sales['Night_sales'] == True]
+        # calculate the total volume sold
+        gb = sales.groupby(by='StoreKey')
+        counts = gb["Volume"].sum()
+        # total volume sold at night
+        gb_night = sales_night.groupby(by='StoreKey')
+        counts_night = gb_night["Volume"].sum()
+        # night index is the proportion of item sold at night
+        night_index = counts_night / counts
+        pickle.dump(night_index, open(fpath, 'wb'))
 
+    # return an array of indexes
+    res = np.zeros(len(shops), dtype=float)
+    for i, sk in enumerate(shops.StoreKey):
+        nprod = night_index[sk] if sk in night_index else -1
+        res[i] = nprod
+
+    return res
+
+def weekend_sales_index(shops):
+    # load or compute the number of products sold in each store
+    fpath = utils.loc / 'data' / 'weekend_sales_index.pkl'
+    print(fpath)
+    if os.path.exists(fpath):
+        print('Loading Weekend sales index')
+        weekend_index = pickle.load(open(fpath, 'rb'))
+        
+    else:
+        print('Computing Weekend sales index')
+        # load and concatenate sales
+        sales17 = load_sales(utils.loc / 'data' / '20200120_sales17.csv', shops)
+        sales1819 = load_sales(utils.loc / 'data' / '20200120_sales1819.csv', shops)
+        sales = pd.concat([sales17, sales1819], axis=0)
+        # add new feature representing Weekend sales
+        sales['Weekend_sales'] = sales['Date'].apply(lambda x:weekend_classify(x))
+        sales_weekend = sales[sales['Weekend_sales'] == True]
+        # calculate the total volume sold
+        gb = sales.groupby(by='StoreKey')
+        counts = gb["Volume"].sum()
+        # total volume sold during weekends
+        gb_weekend = sales_weekend.groupby(by='StoreKey')
+        counts_weekend = gb_weekend["Volume"].sum()
+        # night index is the proportion of item sold during weekends
+        weekend_index = counts_weekend / counts
+        pickle.dump(weekend_index, open(fpath, 'wb'))
+
+    # return an array of indexes
+    res = np.zeros(len(shops), dtype=float)
+    for i, sk in enumerate(shops.StoreKey):
+        nprod = weekend_index[sk] if sk in weekend_index else -1
+        res[i] = nprod if math.isnan(nprod) == False else -1
+
+    return res
+
+def night_classify(time):
+    #Extract the hour
+    hour = math.floor(time/100)
+    #Classify as night sale if sold after 17.00
+    if hour in [0,1,2,17,18,19,20,21,22,23]:
+        return True
+    else:
+        return False
+
+def weekend_classify(date):
+    days_of_week = datetime.strptime(str(date),'%Y%m%d').weekday()
+    #Classify if the sale happened on Sat/Sun
+    if days_of_week in (5,6):
+        return True
+    else:
+        return False
+    
 def load_sales(path=utils.loc / 'data' / '20200120_sales17.csv', shops_df=load_shops(extra_info=False), nrows=None):
 
     # load
