@@ -61,6 +61,7 @@ def load_datasets(args):
 
     # and add the features that were computed rather than directly available
     features += ['NUniqueProductsSold', 'NTotalProductsSold', 'AvgDiscount']
+    features += ['NightIndex', 'WeekendIndex']
 
     # prepare the train and test parts
     X_train = prepare_X(df17[features])
@@ -178,8 +179,8 @@ def save_model_performance(model, loss, m_valid, outloc):
     Y_pred = model.predict(m_valid)
     l = loss(Y_valid, Y_pred)
 
-    with open(outloc / f'{loss.__name__}.txt', 'w') as handle:
-        handle.write('loss_{}'.format(l))
+    with open(outloc / f'loss_{loss.__name__}.txt', 'w') as handle:
+        handle.write('{}'.format(l))
 
 
 def plot_loss_history(model, loss, m_train, m_valid, outloc):

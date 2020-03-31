@@ -115,7 +115,7 @@ def sample(year, sample, force=False):
 
     # merge shops features
     shops = prep.load_shops()
-    shop_features = ['Franchise', 'NUniqueProductsSold', 'NTotalProductsSold']
+    shop_features = ['Franchise', 'NUniqueProductsSold', 'NTotalProductsSold', 'NightIndex', 'WeekendIndex']
     shop_on = 'StoreKey'
     skeleton = merge(skeleton, shops, shop_features, shop_on)
 
