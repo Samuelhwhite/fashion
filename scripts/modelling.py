@@ -135,6 +135,7 @@ def evaluate_model(args, outloc):
 
     for loss in [mean_absolute_error, root_mean_square]:
         plot_loss_history(model, loss, m_train, m_valid, outloc)
+        save_model_performance(model, loss, m_valid, outloc)
 
     # plot the model predictions as a function of variables
     for var in X_train.columns:
@@ -169,6 +170,16 @@ def plot_model_predictions(model, var, X_train, X_valid, Y_train, Y_valid, outlo
     ax.set_xlabel(var)
     ax.legend()
     plt.savefig(outloc / 'Averages_{}.pdf'.format(var))
+
+
+def save_model_performance(model, loss, m_valid, outloc):
+    
+    Y_valid = m_valid.get_label()
+    Y_pred = model.predict(m_valid)
+    l = loss(Y_valid, Y_pred)
+
+    with open(outloc / f'{loss.__name__}.txt', 'w') as handle:
+        handle.write('loss_{}'.format(l))
 
 
 def plot_loss_history(model, loss, m_train, m_valid, outloc):
