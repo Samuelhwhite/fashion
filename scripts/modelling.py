@@ -104,7 +104,7 @@ def train_model(args, outloc):
                           m_train,
                           num_round,
                           evals=[(m_valid, 'valid')],
-                          early_stopping_rounds=5,
+                          early_stopping_rounds=50,
                           #verbose_eval=100)
                           )
 
