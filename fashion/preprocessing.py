@@ -76,7 +76,7 @@ def get_nproducts_in_shop(shops, kind):
 
 def night_sales_index(shops):
     # load or compute the number of products sold in each store
-    fpath = utils.loc / 'data' / 'night_sales_index.pkl'
+    fpath = utils.loc / 'data' / 'cache_night_sales_index.pkl'
     print(fpath)
     if os.path.exists(fpath):
         print('Loading Night sales index')
@@ -99,6 +99,7 @@ def night_sales_index(shops):
         counts_night = gb_night["Volume"].sum()
         # night index is the proportion of item sold at night
         night_index = counts_night / counts
+        night_index = night_index.round(2)
         pickle.dump(night_index, open(fpath, 'wb'))
 
     # return an array of indexes
@@ -111,7 +112,7 @@ def night_sales_index(shops):
 
 def weekend_sales_index(shops):
     # load or compute the number of products sold in each store
-    fpath = utils.loc / 'data' / 'weekend_sales_index.pkl'
+    fpath = utils.loc / 'data' / 'cache_weekend_sales_index.pkl'
     print(fpath)
     if os.path.exists(fpath):
         print('Loading Weekend sales index')
@@ -134,6 +135,7 @@ def weekend_sales_index(shops):
         counts_weekend = gb_weekend["Volume"].sum()
         # night index is the proportion of item sold during weekends
         weekend_index = counts_weekend / counts
+        weekend_index = weekend_index.round(2)
         pickle.dump(weekend_index, open(fpath, 'wb'))
 
     # return an array of indexes
