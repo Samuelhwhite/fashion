@@ -189,7 +189,7 @@ def load_sales(path=utils.loc / 'data' / '20200120_sales17.csv', shops_df=load_s
     return df
 
 
-def load_products(path=utils.loc / 'data' / '20200120_barcode.csv'):
+def load_products(path=utils.loc / 'data' / '20200120_barcode.csv', extra_info=True):
 
     # load the
     df = pd.read_csv(path, low_memory=False)
@@ -215,24 +215,44 @@ def load_products(path=utils.loc / 'data' / '20200120_barcode.csv'):
     cd = 'ColorDescription'
     df[cd] = df[cd].apply(lambda s: colour_transform(s))
 
-    # and keep them to 50 most popular colours
+    # and keep them to N_keep most popular colours
     nkeep = 50
     populars = df[cd].value_counts().index[:nkeep]
     df[cd] = df[cd].apply(lambda s: s if s in populars else 'other')
 
-    # map the colours to an index
-    vc = df['ColorDescription'].value_counts()
-    cidx = {k:i for i, k in enumerate(vc.index)}
-    df['ColorIndex'] = df['ColorDescription'].apply(lambda color: cidx[color])
-
     # keep only the most common sizes (such that 95% of items retain their size, other sizes will be marked as 'other')
     size = 'Size'
     cs = np.cumsum(df[size].value_counts())
-    nkeep = np.sum(cs < 0.95 * cs.iloc[-1])
+    nkeep = int(np.sum(cs < 0.95 * cs.iloc[-1]))
     populars = df[size].value_counts().index[:nkeep]
     df[size] = df[size].apply(lambda s: s if s in populars else 'other')
 
+    # map the colours to an index
+    if extra_info:
+        df['ColorIndex'] = prevalence_index('ColorDescription')
+        df['SizeIndex'] = prevalence_index('Size')
+
     return df
+
+
+@utils.cache
+def prevalence_index(var):
+
+    # load sales data
+    sales = load_sales()
+    prods = load_products(extra_info=False)
+
+    # sum the volumes for each color and sort them decreasingly
+    gbsum = sales.merge(prods[['EAN', var]]) \
+                 .groupby(var) \
+                 .sum()['Volume'] \
+                 .sort_values(ascending=False)
+
+    # create a variable -> index mapping
+    c2i = {c:i for i, c in enumerate(gbsum.index)}
+
+    # apply to all the products
+    return prods[var].apply(lambda c: c2i[c] if c in c2i else 'other')
 
 
 @utils.cache
