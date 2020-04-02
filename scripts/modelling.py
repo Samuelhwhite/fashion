@@ -61,7 +61,7 @@ def load_datasets(args):
 
     # and add the features that were computed rather than directly available
     features += ['NUniqueProductsSold', 'NTotalProductsSold', 'AvgDiscount']
-    features += ['NightIndex', 'WeekendIndex']
+    features += ['NightIndex', 'WeekendIndex', 'ColorIndex']
 
     # prepare the train and test parts
     X_train = prepare_X(df17[features])
@@ -130,6 +130,10 @@ def evaluate_model(args, outloc):
     m_train = xgboost.DMatrix(X_train, label=Y_train)
     m_valid = xgboost.DMatrix(X_valid, label=Y_valid)
 
+    # plot the model predictions as a function of variables
+    for var in X_train.columns:
+        plot_model_predictions(model, var, X_train, X_valid, Y_train, Y_valid, outloc)
+
     # plot the training history
     def root_mean_square(y_true, y_pred):
         return mean_squared_error(y_true, y_pred, squared=False)
@@ -137,10 +141,6 @@ def evaluate_model(args, outloc):
     for loss in [mean_absolute_error, root_mean_square]:
         plot_loss_history(model, loss, m_train, m_valid, outloc)
         save_model_performance(model, loss, m_valid, outloc)
-
-    # plot the model predictions as a function of variables
-    for var in X_train.columns:
-        plot_model_predictions(model, var, X_train, X_valid, Y_train, Y_valid, outloc)
 
 
 def plot_model_predictions(model, var, X_train, X_valid, Y_train, Y_valid, outloc):

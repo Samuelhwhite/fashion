@@ -218,6 +218,11 @@ def load_products(path=utils.loc / 'data' / '20200120_barcode.csv'):
     populars = df[cd].value_counts().index[:nkeep]
     df[cd] = df[cd].apply(lambda s: s if s in populars else 'other')
 
+    # map the colours to an index
+    vc = df['ColorDescription'].value_counts()
+    cidx = {k:i for i, k in enumerate(vc.index)}
+    df['ColorIndex'] = df['ColorDescription'].apply(lambda color: cidx[color])
+
     # keep only the most common sizes (such that 95% of items retain their size, other sizes will be marked as 'other')
     size = 'Size'
     cs = np.cumsum(df[size].value_counts())
@@ -337,6 +342,8 @@ def EAN2pid():
 def main():
 
     shops = load_shops()
+
+    print(shops)
 
     #o = EAN2pid()
     #i = EAN2size()

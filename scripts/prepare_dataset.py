@@ -121,7 +121,7 @@ def sample(year, sample, force=False):
 
     # merge the product features
     prods = prep.load_products()
-    prod_features = ['Gender', 'Season', 'OriginalListedPrice']
+    prod_features = ['Gender', 'Season', 'OriginalListedPrice', 'ColorIndex']
     prod_on = 'EAN'
     skeleton = merge(skeleton, prods, prod_features, prod_on)
 
