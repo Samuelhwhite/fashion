@@ -61,7 +61,7 @@ def load_datasets(args):
 
     # and add the features that were computed rather than directly available
     features += ['NUniqueProductsSold', 'NTotalProductsSold', 'AvgDiscount']
-    features += ['NightIndex', 'WeekendIndex', 'ColorIndex']
+    features += ['NightIndex', 'WeekendIndex', 'ColorIndex', 'SizeIndex']
 
     # prepare the train and test parts
     X_train = prepare_X(df17[features])
