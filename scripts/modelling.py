@@ -5,8 +5,10 @@ import xgboost
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.linear_model import LinearRegression
 import pandas as pd
 import numpy as np
+import pickle
 import sys
 sys.path.insert(0, '..')
 import fashion.preprocessing as prep
@@ -114,6 +116,30 @@ def train_model(args, outloc):
     return model
 
 
+def train_glm(args, outloc):
+
+    # output location
+    if outloc.exists():
+        if args.force:
+            os.system('rm -r {}'.format(outloc))
+        else:
+            print('Model with name {} already exists, please choose another model or use the --force to overwrite.'.format(args.name))
+            exit()
+    outloc.mkdir(parents=True)
+
+    # load the data
+    X_train, X_valid, Y_train, Y_valid = load_datasets(args)
+
+    # train the glm
+    glm = LinearRegression()
+    glm.fit(X_train, Y_train)
+
+    # save the model
+    with open(outloc/'glm.pkl', 'wb') as handle:
+        pickle.dump(glm, handle)
+
+    return glm
+
 def evaluate_model(args, outloc):
 
     # get the model
@@ -121,9 +147,12 @@ def evaluate_model(args, outloc):
         print('Loading model {}'.format(args.name))
         model = xgboost.Booster()
         model.load_model(str(outloc / 'model.xgb'))
-    except xgboost.core.XGBoostError:
+        with open(outloc/'glm.pkl', 'rb') as handle:
+            glm = pickle.load(handle)
+    except (xgboost.core.XGBoostError, TypeError) as e:
         print('No such model exists, training it from scratch.')
         model = train_model(args, outloc)
+        glm = train_glm(args, outloc)
 
     # get the dataset
     X_train, X_valid, Y_train, Y_valid = load_datasets(args)
@@ -132,18 +161,18 @@ def evaluate_model(args, outloc):
 
     # plot the model predictions as a function of variables
     for var in X_train.columns:
-        plot_model_predictions(model, var, X_train, X_valid, Y_train, Y_valid, outloc)
+        plot_model_predictions(model, glm, var, X_train, X_valid, Y_train, Y_valid, outloc)
 
     # plot the training history
     def root_mean_square(y_true, y_pred):
         return mean_squared_error(y_true, y_pred, squared=False)
 
     for loss in [mean_absolute_error, root_mean_square]:
-        plot_loss_history(model, loss, m_train, m_valid, outloc)
+        plot_loss_history(model, glm, loss, m_train, m_valid, X_train, X_valid, outloc)
         save_model_performance(model, loss, m_valid, outloc)
 
 
-def plot_model_predictions(model, var, X_train, X_valid, Y_train, Y_valid, outloc):
+def plot_model_predictions(model, glm, var, X_train, X_valid, Y_train, Y_valid, outloc):
 
     # prepare the dataset
     m_train = xgboost.DMatrix(X_train, label=Y_train)
@@ -152,21 +181,25 @@ def plot_model_predictions(model, var, X_train, X_valid, Y_train, Y_valid, outlo
     df_valid = X_valid.copy()
     df_valid['Volume'] = Y_valid
     df_valid['Predicted'] = model.predict(m_valid)
+    df_valid['GLM'] = glm.predict(X_valid)
 
     df_train = X_train.copy()
     df_train['Volume'] = Y_train
     df_train['Predicted'] = model.predict(m_train)
+    df_train['GLM'] = glm.predict(X_train)
 
     # compute averages
-    gb_valid = df_valid.groupby(var).mean()[['Volume', 'Predicted']]
-    gb_train = df_train.groupby(var).mean()[['Volume', 'Predicted']]
+    gb_valid = df_valid.groupby(var).mean()[['Volume', 'Predicted', 'GLM']]
+    gb_train = df_train.groupby(var).mean()[['Volume', 'Predicted', 'GLM']]
 
     # make the plot
     fig, ax = plt.subplots()
     ax.plot(gb_valid.index, gb_valid['Volume'], c='C0', linestyle='-', label='valid (2018): sales volume')
     ax.plot(gb_valid.index, gb_valid['Predicted'], c='C0', linestyle='--', label='valid (2018): model prediction')
+    ax.plot(gb_valid.index, gb_valid['GLM'], c='C0', linestyle=':', label='valid (2018): GLM')
     ax.plot(gb_train.index, gb_train['Volume'], c='C1', linestyle='-', label='train (2017): sales volume')
     ax.plot(gb_train.index, gb_train['Predicted'], c='C1', linestyle='--', label='train (2017): model prediction')
+    ax.plot(gb_train.index, gb_train['GLM'], c='C1', linestyle=':', label='train (2017): GLM')
     ax.set_ylabel('(predicted) sales volume')
     ax.set_xlabel(var)
     ax.legend()
@@ -183,7 +216,7 @@ def save_model_performance(model, loss, m_valid, outloc):
         handle.write('{}'.format(l))
 
 
-def plot_loss_history(model, loss, m_train, m_valid, outloc):
+def plot_loss_history(model, glm, loss, m_train, m_valid, X_train, X_valid, outloc):
 
     # take out
     Y_train = m_train.get_label()
@@ -193,6 +226,12 @@ def plot_loss_history(model, loss, m_train, m_valid, outloc):
     mean_preds = Y_train.mean() * np.ones(Y_train.shape)
     train_error = loss(Y_train, mean_preds)
     valid_error = loss(Y_valid, mean_preds)
+    
+    # compute the glm loss
+    glm_train_pred = glm.predict(X_train)
+    glm_valid_pred = glm.predict(X_valid)
+    glm_train_loss = loss(Y_train, glm_train_pred)
+    glm_valid_loss = loss(Y_valid, glm_valid_pred)
 
     # compute the losses throughout the training 
     print('Computing predictions for partial models (first x trees)')
@@ -210,13 +249,16 @@ def plot_loss_history(model, loss, m_train, m_valid, outloc):
 
     # create the training plot
     fig, ax = plt.subplots()
-    ax.plot(trees, val_loss, color='C0', label='validation loss')
-    ax.plot(trees, train_loss, color='C1', label='train loss')
-    ax.plot(trees, valid_error*np.ones(trees.shape), color='C0', linestyle=':', label='baseline valid')
-    ax.plot(trees, train_error*np.ones(trees.shape), color='C1', linestyle=':', label='baseline train')
+    ax.plot(trees, valid_error*np.ones(trees.shape), color='C0', linestyle='-', label='valid baseline')
+    ax.plot(trees, val_loss, color='C0', linestyle='--', label='validation model loss')
+    ax.plot(trees, glm_valid_loss*np.ones(trees.shape), color='C0', linestyle=':', label='valid GLM')
+
+    ax.plot(trees, train_error*np.ones(trees.shape), color='C1', linestyle='-', label='train baseline')
+    ax.plot(trees, train_loss, color='C1', linestyle='--', label='train model loss')
+    ax.plot(trees, glm_train_loss*np.ones(trees.shape), color='C1', linestyle=':', label='train GLM')
     ax.set_ylim(0, 1.2 * valid_error)
     ax.legend()
-    ax.set_xlabel('Training stage')
+    ax.set_xlabel('Training stage (xgboost)')
     ax.set_ylabel(loss.__name__)
     plt.savefig(outloc / 'History_{}.pdf'.format(loss.__name__))
 
